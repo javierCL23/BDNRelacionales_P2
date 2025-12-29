@@ -1,22 +1,34 @@
-Estudios,Universidad,Campus
-Grado en Bellas Artes,UCM,Campus de Ciudad Universitaria
-Grado en Filosofía,UCM,Campus de Ciudad Universitaria
-Grado en Logopedia,UCM,Campus de Somosaguas
-Grado en Psicología,UCM,Campus de Somosaguas
-Grado en Arquitectura,UPM,Campus Ciudad Universitaria
-Grado en Ingeniería Aeroespacial,UPM,Campus Ciudad Universitaria
-Grado en Ingeniería Informática,UPM,Campus Montegancedo
-Grado en Ciencia de Datos e Inteligencia Artificial,UPM,Campus Montegancedo
-Grado en Ingeniería del Software,UPM,Campus Sur
-Grado en Ingeniería Geomática,UPM,Campus Sur
-Grado en Criminología,URJC,Campus de Alcorcón
-Grado en Bellas Artes,URJC,Campus de Aranjuez
-Grado en Ciencia e Ingeniería de Datos,URJC,Campus de Fuenlabrada
-Grado en Ingeniería Informática,URJC,Campus de Móstoles
-Grado en Derecho,URJC,Campus de Vicálvaro
-Grado en Ciencia e Ingeniería de Datos,UC3M,Campus de Leganés
-Grado en Ingeniería Biomédica,UC3M,Campus de Leganés
-Grado en Economía,UC3M,Campus de Getafe
-Grado en Ciencias Políticas,UC3M,Campus de Getafe
-Grado en Ingeniería Informática,UC3M,Campus de Colmenarejo
-Máster en Tributación,UC3M,Campus de Puerta de Toledo
+Estudios,Universidad,Campus,Créditos
+Grado en Bellas Artes,UCM,Campus de Ciudad Universitaria,240
+Grado en Filosofía,UCM,Campus de Ciudad Universitaria,240
+Máster en Física Nuclear,UCM,Campus de Ciudad Universitaria,60
+Grado en Logopedia,UCM,Campus de Somosaguas,240
+Grado en Psicología,UCM,Campus de Somosaguas,240
+Máster en Intervención Logopédica,UCM,Campus de Somosaguas,60
+Máster en Psicofarmacología y Drogas de Abuso,UCM,Campus de Somosaguas,60
+Grado en Arquitectura,UPM,Campus Ciudad Universitaria,300
+Grado en Ingeniería Aeroespacial,UPM,Campus Ciudad Universitaria,240
+Máster en Biología Computacional,UPM,Campus Ciudad Universitaria,60
+Grado en Ingeniería Informática,UPM,Campus Montegancedo,240
+Grado en Ciencia de Datos e Inteligencia Artificial,UPM,Campus Montegancedo,240
+Máster en Inteligencia Artificial,UPM,Campus Montegancedo,60
+Grado en Ingeniería del Software,UPM,Campus Sur,240
+Grado en Ingeniería Geomática,UPM,Campus Sur,240
+Máster en Ciberseguridad,UPM,Campus Sur,60
+Grado en Criminología,URJC,Campus de Alcorcón,240
+Master en Neurociencia Cognitiva y Neuropsicología,URJC,Campus de Alcorcón,60
+Grado en Bellas Artes,URJC,Campus de Aranjuez,240
+Grado en Ciencia e Ingeniería de Datos,URJC,Campus de Fuenlabrada,240
+Grado en Ingeniería Informática,URJC,Campus de Móstoles,240
+Master en Análisis de Datos Deportivos,URJC,Campus de Móstoles,60
+Grado en Derecho,URJC,Campus de Vicálvaro,240
+Master en Gestión del Mercado del Arte,URJC,Campus de Vicálvaro,60
+Grado en Ciencia e Ingeniería de Datos,UC3M,Campus de Leganés,240
+Grado en Ingeniería Biomédica,UC3M,Campus de Leganés,240
+Máster en Ingeniería Circular,UC3M,Campus de Leganés,60
+Grado en Economía,UC3M,Campus de Getafe,240
+Grado en Ciencias Políticas,UC3M,Campus de Getafe,240
+Máster en Economía,UC3M,Campus de Getafe,60
+Grado en Ingeniería Informática,UC3M,Campus de Colmenarejo,240
+Máster en Tributación,UC3M,Campus de Puerta de Toledo,60
+
