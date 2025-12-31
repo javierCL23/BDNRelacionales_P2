@@ -1,34 +1,33 @@
-Estudios,Universidad,Campus,Créditos
-Grado en Bellas Artes,UCM,Campus de Ciudad Universitaria,240
-Grado en Filosofía,UCM,Campus de Ciudad Universitaria,240
-Máster en Física Nuclear,UCM,Campus de Ciudad Universitaria,60
-Grado en Logopedia,UCM,Campus de Somosaguas,240
-Grado en Psicología,UCM,Campus de Somosaguas,240
-Máster en Intervención Logopédica,UCM,Campus de Somosaguas,60
-Máster en Psicofarmacología y Drogas de Abuso,UCM,Campus de Somosaguas,60
-Grado en Arquitectura,UPM,Campus Ciudad Universitaria,300
-Grado en Ingeniería Aeroespacial,UPM,Campus Ciudad Universitaria,240
-Máster en Biología Computacional,UPM,Campus Ciudad Universitaria,60
-Grado en Ingeniería Informática,UPM,Campus Montegancedo,240
-Grado en Ciencia de Datos e Inteligencia Artificial,UPM,Campus Montegancedo,240
-Máster en Inteligencia Artificial,UPM,Campus Montegancedo,60
-Grado en Ingeniería del Software,UPM,Campus Sur,240
-Grado en Ingeniería Geomática,UPM,Campus Sur,240
-Máster en Ciberseguridad,UPM,Campus Sur,60
-Grado en Criminología,URJC,Campus de Alcorcón,240
-Master en Neurociencia Cognitiva y Neuropsicología,URJC,Campus de Alcorcón,60
-Grado en Bellas Artes,URJC,Campus de Aranjuez,240
-Grado en Ciencia e Ingeniería de Datos,URJC,Campus de Fuenlabrada,240
-Grado en Ingeniería Informática,URJC,Campus de Móstoles,240
-Master en Análisis de Datos Deportivos,URJC,Campus de Móstoles,60
-Grado en Derecho,URJC,Campus de Vicálvaro,240
-Master en Gestión del Mercado del Arte,URJC,Campus de Vicálvaro,60
-Grado en Ciencia e Ingeniería de Datos,UC3M,Campus de Leganés,240
-Grado en Ingeniería Biomédica,UC3M,Campus de Leganés,240
-Máster en Ingeniería Circular,UC3M,Campus de Leganés,60
-Grado en Economía,UC3M,Campus de Getafe,240
-Grado en Ciencias Políticas,UC3M,Campus de Getafe,240
-Máster en Economía,UC3M,Campus de Getafe,60
-Grado en Ingeniería Informática,UC3M,Campus de Colmenarejo,240
-Máster en Tributación,UC3M,Campus de Puerta de Toledo,60
-
+,Estudios,Universidad,Campus,Créditos,Coordinador
+0,Grado en Bellas Artes,UCM,Campus de Ciudad Universitaria,240,Carmen González Castro
+1,Grado en Filosofía,UCM,Campus de Ciudad Universitaria,240,Juan Antonio Fernández Manzano
+2,Máster en Física Nuclear,UCM,Campus de Ciudad Universitaria,60,Paula Beatriz Ibáñez García
+3,Grado en Logopedia,UCM,Campus de Somosaguas,240,Estíbaliz Terradillos Azpiroz
+4,Grado en Psicología,UCM,Campus de Somosaguas,240,Jesús Saiz Galdós
+5,Máster en Intervención Logopédica,UCM,Campus de Somosaguas,60,Silvia Nieva Ramos
+6,Máster en Psicofarmacología y Drogas de Abuso,UCM,Campus de Somosaguas,60,Raquel Gómez de Heras
+7,Grado en Arquitectura,UPM,Campus Ciudad Universitaria,300,Javier Fco. Raposo Grau
+8,Grado en Ingeniería Aeroespacial,UPM,Campus Ciudad Universitaria,240,Gustavo Alonso Rodrigo
+9,Máster en Biología Computacional,UPM,Campus Ciudad Universitaria,60,María Garrido Arandia
+10,Grado en Ingeniería Informática,UPM,Campus Montegancedo,240,Javier López de la Cruz
+11,Grado en Ciencia de Datos e Inteligencia Artificial,UPM,Campus Montegancedo,240,Félix José Fuentes Hurtado
+12,Máster en Inteligencia Artificial,UPM,Campus Montegancedo,60,Javier Bajo Pérez
+13,Grado en Ingeniería del Software,UPM,Campus Sur,240,José Antonio Calvo-Manzano Villalón
+14,Grado en Ingeniería Geomática,UPM,Campus Sur,240,Yolanda Torres Fernández
+15,Máster en Ciberseguridad,UPM,Campus Sur,60,Juan Manuel Montero Martínez
+16,Grado en Criminología,URJC,Campus de Alcorcón,240,Marina Sanz
+17,Master en Neurociencia Cognitiva y Neuropsicología,URJC,Campus de Alcorcón,60,Francisco Mercado Romero
+18,Grado en Bellas Artes,URJC,Campus de Aranjuez,240,Marta Linaza
+19,Grado en Ciencia e Ingeniería de Datos,URJC,Campus de Fuenlabrada,240,José Felipe Ortega Soto
+20,Grado en Ingeniería Informática,URJC,Campus de Móstoles,240,María Dolores Cuadra Fernández
+21,Master en Análisis de Datos Deportivos,URJC,Campus de Móstoles,60,Isaac Martín de Diego
+22,Grado en Derecho,URJC,Campus de Vicálvaro,240,María Palma Álvarez Pozo
+23,Master en Gestión del Mercado del Arte,URJC,Campus de Vicálvaro,60,Susana María Romero Sanz
+24,Grado en Ciencia e Ingeniería de Datos,UC3M,Campus de Leganés,240,Fernando Díaz de María
+25,Grado en Ingeniería Biomédica,UC3M,Campus de Leganés,240,Javier Pascau González-Garzón
+26,Máster en Ingeniería Circular,UC3M,Campus de Leganés,60,Alberto García Peñas
+27,Grado en Economía,UC3M,Campus de Getafe,240,Ignacio Ortuño-Ortín
+28,Grado en Ciencias Políticas,UC3M,Campus de Getafe,240,Gema María García Albacete
+29,Máster en Economía,UC3M,Campus de Getafe,60,Felix Wellschmied
+30,Grado en Ingeniería Informática,UC3M,Campus de Colmenarejo,240,Valentín Miguel Moreno Pelayo
+31,Máster en Tributación,UC3M,Campus de Puerta de Toledo,60,Miguel Alonso Gil
