@@ -28,7 +28,6 @@ def cargarMetro(dir = "estaciones.csv"):
 
     Devuelve una lista con los objetos a añadir a la coleción de estaciones y a la colección de líneas
     """
-    dir = "../estaciones.csv"
     estaciones = pd.read_csv(dir)
     estaciones_colection = []
     lineas_map = {}
@@ -74,6 +73,62 @@ def cargarMetro(dir = "estaciones.csv"):
     
     return (estaciones_colection,lineas_collection)
 
+def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
+    campus_df = pd.read_csv(dirCampus)
+    estudios_df = pd.read_csv(dirEstudios)
+
+    # Procesar Estudios: Determinar si es GRADO o MÁSTER
+    estudios_list = []
+    for _, est in estudios_df.iterrows():
+        nombre_estudio = est['Estudios']
+        tipo = "GRADO" if "Grado" in nombre_estudio else "MÁSTER"
+        
+        estudios_list.append({
+            "nombre": nombre_estudio,
+            "universidad": est['Universidad'],
+            "campus": est['Campus'].strip(),
+            "tipo": tipo,
+            "creditos": est['Créditos'],
+            "coordinador": est['Coordinador']
+        })
+
+    # Procesar Campus y Embeber Estudios
+    campus_docs = []
+    for _, camp in campus_df.iterrows():
+        nombre_campus = camp['Campus'].strip()
+        
+        # Filtramos los estudios que pertenecen a este campus para embeberlos
+        estudios_del_campus = [
+            {"nombre": e['nombre'], "tipo": e['tipo']} 
+            for e in estudios_list if e['campus'].upper() == nombre_campus.upper()
+        ]
+
+        # Estructuramos las estaciones cercanas (Requisito: rol principal/alternativa)
+        estaciones = []
+        if pd.notna(camp['Estación_Principal']):
+            estaciones.append({
+                "nombre": camp['Estación_Principal'],
+                "minutos": camp['Tiempo_Principal'],
+                "rol": "principal"
+            })
+        if pd.notna(camp['Estación_Alternativa']):
+            estaciones.append({
+                "nombre": camp['Estación_Alternativa'],
+                "minutos": camp['Tiempo_Alternativa'],
+                "rol": "alternativa"
+            })
+
+        doc_campus = {
+            "nombre": nombre_campus,
+            "universidad": camp['Universidad'],
+            "coordenadas": {"x": camp['X'], "y": camp['Y']},
+            "estaciones_cercanas": estaciones,
+            "estudios": estudios_del_campus
+        }
+        campus_docs.append(doc_campus)
+
+    return campus_docs
+
 
 def main():
     #Conexión y limpieza de la base de datos
@@ -81,18 +136,24 @@ def main():
     if not client:
         return 
     db = client["Practica2_DB"]
-    # Borra las colecciones si ya existen para empezar de cero en cada ejecución
+
+    # Borrar las colecciones si ya existen para empezar de cero en cada ejecución
     db.estaciones.drop()
     db.lineas.drop()
+    db.estudios.drop()
+    db.campus.drop()
 
     # Creación de las colecciones de lineas y estaciones
-    estaciones, lineas = cargarMetro()
+    estaciones, lineas = cargarMetro(dir = "estaciones.csv")
     db.estaciones.insert_many(estaciones)
-    db.lineas.insert_many(lineas) 
-
+    db.lineas.insert_many(lineas)
     print(f"Insertadas {len(estaciones)} estaciones y {len(lineas)} líneas.")
 
-
+    # Creación de la colección de campus con estudios embebidos
+    campus = cargarUniversidad(dirCampus= "campus.csv",dirEstudios="estudios.csv")
+    db.campus.insert_many(campus)
+    print(f"Insertadas {len(campus)} campus.")
+    
 
 if __name__ == "__main__":
     main()
