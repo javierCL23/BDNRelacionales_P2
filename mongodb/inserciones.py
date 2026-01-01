@@ -1,10 +1,12 @@
 import pandas as pd
-import ast
 from pymongo import MongoClient
 
-def mongoConnect(host = "localhost", port = "27017"):
+import ast
+import os
+from time import sleep
+
+def mongoConnect(connection_string):
     """Permite conexión con MongoDB asociado a un puerto y host específicos"""
-    connection_string = f"mongodb://{host}:{port}/"
     try:
         client = MongoClient(connection_string, serverSelectionTimeoutMS=3000)
         client.admin.command('ping')
@@ -77,7 +79,7 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
     campus_df = pd.read_csv(dirCampus)
     estudios_df = pd.read_csv(dirEstudios)
 
-    # Procesar Estudios: Determinar si es GRADO o MÁSTER
+    # 1. Procesar Estudios: Lista completa de referencia
     estudios_list = []
     for _, est in estudios_df.iterrows():
         nombre_estudio = est['Estudios']
@@ -92,18 +94,22 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
             "coordinador": est['Coordinador']
         })
 
-    # Procesar Campus y Embeber Estudios
+    # 2. Procesar Campus y Embeber Estudios con TODOS los campos
     campus_docs = []
     for _, camp in campus_df.iterrows():
         nombre_campus = camp['Campus'].strip()
         
-        # Filtramos los estudios que pertenecen a este campus para embeberlos
+        # MODIFICACIÓN AQUÍ: Añadimos 'creditos' y 'coordinador' al embebido
         estudios_del_campus = [
-            {"nombre": e['nombre'], "tipo": e['tipo']} 
+            {
+                "nombre": e['nombre'], 
+                "tipo": e['tipo'],
+                "creditos": e['creditos'],
+                "coordinador": e['coordinador']
+            } 
             for e in estudios_list if e['campus'].upper() == nombre_campus.upper()
         ]
 
-        # Estructuramos las estaciones cercanas (Requisito: rol principal/alternativa)
         estaciones = []
         if pd.notna(camp['Estación_Principal']):
             estaciones.append({
@@ -123,16 +129,20 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
             "universidad": camp['Universidad'],
             "coordenadas": {"x": camp['X'], "y": camp['Y']},
             "estaciones_cercanas": estaciones,
-            "estudios": estudios_del_campus
+            "estudios": estudios_del_campus # Ahora contiene la info completa
         }
         campus_docs.append(doc_campus)
 
     return campus_docs
 
-
 def main():
+    # Dar tiempo a la base de datos a calentar
+    sleep(3)
+
     #Conexión y limpieza de la base de datos
-    client = mongoConnect()
+    MONGO_URL = os.environ.get('MONGO_URL')
+    print("MONGO:",MONGO_URL)
+    client = mongoConnect(MONGO_URL)
     if not client:
         return 
     db = client["Practica2_DB"]

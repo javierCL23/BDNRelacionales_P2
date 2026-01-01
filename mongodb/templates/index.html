@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Dinámico MetroCampus</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e74c3c; --bg: #f4f7f6; --success: #27ae60; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 20px; color: var(--primary); }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 25px; border-radius: 12px; shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .card { border: 1px solid #e1e4e8; padding: 20px; border-radius: 8px; background: #fff; }
+        h1 { text-align: center; color: var(--primary); border-bottom: 3px solid var(--accent); padding-bottom: 10px; }
+        h3 { margin-top: 0; color: var(--primary); border-left: 5px solid var(--accent); padding-left: 10px; }
+        label { display: block; margin: 10px 0 5px; font-weight: 600; font-size: 0.85rem; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #d1d5da; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .btn-del { background: var(--accent); color: white; }
+        .btn-upd { background: #3498db; color: white; }
+        .btn-add { background: var(--success); color: white; }
+        .info-tag { font-size: 0.75rem; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Consola de Operaciones CRUD</h1>
+    
+    <div class="grid">
+        <div class="card">
+            <h3>Gestión de Metro</h3>
+            
+            <form action="/api/metro/borrar" method="POST">
+                <label>Seleccionar Línea para Eliminar:</label>
+                <select name="linea_id" id="selector-lineas-borrar">
+                    <option value="">Cargando líneas...</option>
+                </select>
+                <span class="info-tag">Afectará a los 'lineas_ids' de las estaciones vinculadas.</span>
+                <button type="submit" class="btn-del">Eliminar Línea Permanentemente</button>
+            </form>
+
+            <hr style="margin: 20px 0;">
+
+            <form action="/api/metro/cortar" method="POST">
+                <label>Línea Afectada:</label>
+                <select name="linea_id" id="selector-lineas-corte" onchange="cargarEstaciones(this.value)">
+                    <option value="">Seleccione una línea...</option>
+                </select>
+                
+                <label>Desde Estación (Inicio Corte):</label>
+                <select name="estacion_inicio" id="selector-estacion-inicio"></select>
+                
+                <label>Hasta Estación (Fin Corte):</label>
+                <select name="estacion_fin" id="selector-estacion-fin"></select>
+                
+                <button type="submit" class="btn-upd">Marcar Tramo como "No Accesible"</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>Gestión Académica Universitaria</h3>
+    
+            <form action="/api/estudios/actualizar" method="POST">
+                <label>Campus del Estudio:</label>
+                <select name="campus_id" id="selector-campus-actualizar" onchange="cargarEstudiosDelCampus(this.value)">
+                    <option value="">Seleccione un campus...</option>
+                </select>
+
+                <label>Grado/Máster a modificar:</label>
+                <select name="estudio_id" id="selector-estudios-filtrados">
+                    <option value="">Primero seleccione un campus...</option>
+                </select>
+                
+                <label>Nuevo Coordinador:</label>
+                <input type="text" name="coordinador" required placeholder="Nombre del nuevo responsable">
+                <button type="submit" class="btn-upd">Actualizar Coordinador</button>
+            </form>    
+            <hr style="margin: 20px 0;">
+
+            <form action="/api/estudios/nuevo" method="POST">
+                <label>Nombre del Título:</label>
+                <input type="text" name="nombre" required placeholder="Ej: Grado en Ciencia de Datos">
+                
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label>Créditos ECTS:</label>
+                        <input type="number" name="creditos" value="240">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Tipo:</label>
+                        <select name="tipo">
+                            <option value="GRADO">GRADO</option>
+                            <option value="MÁSTER">MÁSTER</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>Campus de Impartición:</label>
+                <select name="campus_id" id="selector-campus">
+                    </select>
+                
+                <label>Coordinador Inicial:</label>
+                <input type="text" name="coordinador_init" placeholder="Nombre del docente">
+                
+                <button type="submit" class="btn-add">Registrar Nuevo Estudio</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/data/opciones')
+        .then(res => res.json())
+        .then(data => {
+            const selLineasBorrar = document.getElementById('selector-lineas-borrar');
+            const selLineasCorte = document.getElementById('selector-lineas-corte');
+            const selCampusRegistro = document.getElementById('selector-campus');
+            const selCampusActualizar = document.getElementById('selector-campus-actualizar'); // Nuevo ID
+
+            // Llenar selectores de líneas
+            data.lineas.forEach(l => {
+                selLineasBorrar.innerHTML += `<option value="${l}">${l}</option>`;
+                selLineasCorte.innerHTML += `<option value="${l}">${l}</option>`;
+            });
+
+            // Llenar selectores de campus (ambos: el de registro y el de actualizar)
+            data.campus.forEach(c => {
+                selCampusRegistro.innerHTML += `<option value="${c}">${c}</option>`;
+                selCampusActualizar.innerHTML += `<option value="${c}">${c}</option>`;
+            });
+        });
+});
+    // Función para cargar estaciones específicas cuando se elige una línea
+    function cargarEstaciones(lineaId) {
+        fetch(`/api/data/estaciones/${lineaId}`)
+            .then(res => res.json())
+            .then(estaciones => {
+                const inicio = document.getElementById('selector-estacion-inicio');
+                const fin = document.getElementById('selector-estacion-fin');
+                inicio.innerHTML = ""; fin.innerHTML = "";
+                
+                estaciones.forEach(est => {
+                    let opt = `<option value="${est}">${est}</option>`;
+                    inicio.innerHTML += opt;
+                    fin.innerHTML += opt;
+                });
+            });
+    }
+    function cargarEstudiosDelCampus(campusNombre) {
+        fetch(`/api/data/estudios_por_campus/${campusNombre}`)
+            .then(res => res.json())
+            .then(estudios => {
+                const selEstudios = document.getElementById('selector-estudios-filtrados');
+                selEstudios.innerHTML = "";
+                estudios.forEach(e => {
+                    selEstudios.innerHTML += `<option value="${e}">${e}</option>`;
+                });
+            });
+    }
+</script>
+
+</body>
+</html>

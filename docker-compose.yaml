@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - metrocampus_net
+
+  mongo-app:
+    build:
+      context: .
+      dockerfile: build/mongodb/Dockerfile
+    container_name: mongo-app
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017/
+    depends_on:
+      - mongo
+    networks:
+      - metrocampus_net
+
+networks:
+  metrocampus_net:
+    driver: bridge
