@@ -83,7 +83,7 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
     estudios_list = []
     for _, est in estudios_df.iterrows():
         nombre_estudio = est['Estudios']
-        tipo = "GRADO" if "Grado" in nombre_estudio else "MÁSTER"
+        tipo = "GRADO" if "GRADO" in nombre_estudio else "MÁSTER"
         
         estudios_list.append({
             "nombre": nombre_estudio,
