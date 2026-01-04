@@ -15,25 +15,25 @@ db = client["Practica2_DB"]
 def index():
     return render_template('index.html')
 
-# Obtener campos de selectores (líneas, estudios, campus)
+# Obtener campos de selectores (líneas,estaciones, estudios, campus, zonas)
 @app.route('/api/data/opciones', methods=['GET'])
 def get_opciones():
     try:
-        # Extraemos y limpiamos de posibles nulos o vacíos
         universidades = [u for u in db.campus.distinct("universidad") if u]
         zonas = [z for z in db.estaciones.distinct("zona") if z]
+        todas_estaciones = sorted(db.estaciones.distinct("nombre"))
         
-        # Ojo: asegúrate de que el nombre del campo en MongoDB sea exactamente "universidad"
         return jsonify({
             "lineas": sorted(db.lineas.distinct("linea_id")),
             "campus": sorted(db.campus.distinct("nombre")),
             "universidades": sorted(universidades),
-            "zonas": sorted(zonas)
+            "zonas": sorted(zonas),
+            "estaciones_lista": todas_estaciones
         })
     except Exception as e:
         print(f"Error cargando opciones: {e}")
         return jsonify({"error": str(e)}), 500
-    
+        
 
 # Obtener estaciones de cada línea
 @app.route('/api/data/estaciones/<linea_id>', methods=['GET'])
@@ -42,6 +42,7 @@ def get_estaciones_linea(linea_id):
     if linea:
         return jsonify([e["nombre_estacion"] for e in linea["estaciones"]])
     return jsonify([])
+
 
 
 # --- RUTAS CRUD (ACCIONES) ---
@@ -155,6 +156,8 @@ def nuevo_estudio():
     """
 
 # --- RUTAS DE CONSULTAS DE LECTURA ---
+# --- RUTAS DE CONSULTAS DE LECTURA (RETORNO HTML) ---
+
 @app.route('/api/consultas/estaciones-linea', methods=['GET'])
 def consulta_recorrido():
     linea_id = request.args.get('linea_id')
@@ -165,7 +168,19 @@ def consulta_recorrido():
         {"$project": {"_id": 0, "nombre": "$estaciones.nombre_estacion", "indice": "$estaciones.indiceEnLinea"}}
     ]
     resultados = list(db.lineas.aggregate(pipeline))
-    return jsonify(resultados)
+    
+    filas = "".join([f"<tr><td>{r['indice']}</td><td>{r['nombre']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Recorrido: Línea {linea_id}</h1>
+    <table border="1" style="width:100%; border-collapse: collapse;">
+        <thead style="background: #2c3e50; color: white;">
+            <tr><th style="padding:10px;">Orden</th><th style="padding:10px;">Estación</th></tr>
+        </thead>
+        <tbody>{filas}</tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
 
 @app.route('/api/consultas/estaciones-renfe', methods=['GET'])
 def consulta_renfe():
@@ -173,16 +188,51 @@ def consulta_renfe():
         {"tieneRenfe": True},
         {"_id": 0, "nombre": 1, "detallesRenfe": 1}
     ))
-    return jsonify(resultados)
+    
+    filas = "".join([f"<tr><td>{r['nombre']}</td><td>{r.get('detallesRenfe', 'Cercanías')}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Correspondencias con Renfe</h1>
+    <table border="1" style="width:100%; border-collapse: collapse;">
+        <thead style="background: #e74c3c; color: white;">
+            <tr><th style="padding:10px;">Estación Metro</th><th style="padding:10px;">Detalles Renfe</th></tr>
+        </thead>
+        <tbody>{filas}</tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
 
 @app.route('/api/consultas/accesibilidad-zona', methods=['GET'])
 def consulta_accesibilidad():
     zona = request.args.get('zona')
+    # Filtrado por zona y accesibilidad distinta a 'N'
     resultados = list(db.estaciones.find(
         {"zona": zona, "grado_accesibilidad": {"$ne": "N"}},
         {"_id": 0, "nombre": 1, "grado_accesibilidad": 1}
     ))
-    return jsonify(resultados)
+
+    total = len(resultados)
+    filas = "".join([f"<tr><td style='padding:8px;'>{r['nombre']}</td><td style='padding:8px;'>Nivel {r['grado_accesibilidad']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Estaciones Accesibles - Zona {zona}</h1>
+    <p style="background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; font-weight: bold;">
+        Se han encontrado <strong>{total}</strong> estaciones accesibles en esta zona.
+    </p>
+    <table border="1" style="width:100%; border-collapse: collapse; margin-top: 10px;">
+        <thead style="background: #27ae60; color: white;">
+            <tr>
+                <th style="padding:10px; text-align: left;">Estación</th>
+                <th style="padding:10px; text-align: left;">Grado de Accesibilidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            {filas if total > 0 else "<tr><td colspan='2' style='padding:10px; text-align:center;'>No se han encontrado estaciones accesibles en esta zona.</td></tr>"}
+        </tbody>
+    </table>
+    <hr>
+    <a href="/">[Volver al panel]</a>
+    """
 
 @app.route('/api/consultas/campus-universidad', methods=['GET'])
 def consulta_campus_uni():
@@ -191,26 +241,50 @@ def consulta_campus_uni():
         {"universidad": uni},
         {"_id": 0, "nombre": 1, "universidad": 1}
     ))
-    return jsonify(resultados)
+    
+    filas = "".join([f"<tr><td>{r['nombre']}</td><td>{r['universidad']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Sedes de la {uni}</h1>
+    <table border="1" style="width:100%; border-collapse: collapse;">
+        <thead style="background: #3498db; color: white;">
+            <tr><th style="padding:10px;">Nombre Campus</th><th style="padding:10px;">Universidad</th></tr>
+        </thead>
+        <tbody>{filas}</tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
 
 @app.route('/api/consultas/campus-estacion', methods=['GET'])
 def consulta_campus_estacion():
     estacion = request.args.get('estacion_nombre')
     resultados = list(db.campus.find(
-        {"estaciones_cercanas": {"$elemMatch": {"nombre": estacion.upper(), "rol": "principal"}}},
+        {"estaciones_cercanas": {"$elemMatch": {"nombre": estacion, "rol": "principal"}}},
         {"_id": 0, "nombre": 1, "universidad": 1}
     ))
-    return jsonify(resultados)
+    
+    total = len(resultados)
+    filas = "".join([f"<tr><td>{r['nombre']}</td><td>{r['universidad']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Campus vinculados a: {estacion}</h1>
+    <p>Se han encontrado <strong>{total}</strong> campus que tienen esta parada como principal.</p>
+    <table border="1" style="width:100%; border-collapse: collapse;">
+        <thead style="background: #2c3e50; color: white;">
+            <tr><th style="padding:10px;">Campus</th><th style="padding:10px;">Universidad</th></tr>
+        </thead>
+        <tbody>
+            {filas if total > 0 else "<tr><td colspan='2' style='padding:10px; text-align:center;'>No hay campus asociados.</td></tr>"}
+        </tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
 
 @app.route('/api/consultas/grados-detalle', methods=['GET'])
 def consulta_grados():
     nombre_grado = request.args.get('nombre_grado')
+    pipeline = [{"$unwind":"$estudios"}, {"$match":{"estudios.tipo":"GRADO"}}]
     
-    pipeline = [
-        {"$unwind":"$estudios"},
-        {"$match":{"estudios.tipo":"GRADO"}}
-    ]
-    # Usuario escribió un nombre (caso alternativo)
     if nombre_grado:
         pipeline.append({"$match": {"estudios.nombre": {"$regex": nombre_grado, "$options": "i"}}})
         
@@ -220,8 +294,174 @@ def consulta_grados():
     ])
     
     resultados = list(db.campus.aggregate(pipeline))
-    return jsonify(resultados)
+    
+    filas = "".join([f"<tr><td>{r['nombre']}</td><td>{r['nombreCampus']}</td><td>{r['universidad']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Detalle de Títulos de Grado</h1>
+    <table border="1" style="width:100%; border-collapse: collapse;">
+        <thead style="background: #3498db; color: white;">
+            <tr>
+                <th style="padding:10px;">Grado</th>
+                <th style="padding:10px;">Campus</th>
+                <th style="padding:10px;">Universidad</th>
+            </tr>
+        </thead>
+        <tbody>{filas}</tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
+# --- RUTAS DE AGREGACIONES ---
 
+@app.route('/api/agregaciones/estaciones-por-linea', methods=['GET'])
+def agregacion_estaciones_linea():
+    pipeline = [
+        {"$unwind": "$lineas_ids"},
+        {"$group": {"_id": "$lineas_ids.linea", "nEstaciones": {"$sum": 1}}},
+        {"$sort": {"nEstaciones": -1}},
+        {"$project":{"_id":0,"linea":"$_id","nEstaciones":1}}
+    ]
+    resultados = list(db.estaciones.aggregate(pipeline))
+    
+    filas = "".join([f"<tr><td>Línea {r['linea']}</td><td>{r['nEstaciones']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Ranking: Estaciones por Línea</h1>
+    <table border="1" style="width:100%; border-collapse: collapse; text-align: left;">
+        <thead style="background: #2c3e50; color: white;">
+            <tr><th style="padding: 10px;">Línea</th><th style="padding: 10px;">Nº Estaciones</th></tr>
+        </thead>
+        <tbody>
+            {filas}
+        </tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
+
+@app.route('/api/agregaciones/universitarias-por-zona', methods=['GET'])
+def agregacion_universitarias_zona():
+    pipeline = [
+        {"$unwind": "$estaciones_cercanas"},
+        {"$lookup": {
+            "from": "estaciones",
+            "localField": "estaciones_cercanas.nombre",
+            "foreignField": "nombre",
+            "as": "info_estacion"
+        }},
+        {"$unwind": "$info_estacion"},
+        {"$group": {"_id": "$info_estacion.zona", "nEstaciones": {"$count": {}}}},
+        {"$project":{"_id":0,"Tarifa":"$_id","nEstaciones":1}},
+        {"$sort": {"Tarifa": 1}}
+    ]
+    resultados = list(db.campus.aggregate(pipeline))
+    
+    filas = "".join([f"<tr><td>Zona {r['Tarifa']}</td><td>{r['nEstaciones']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Estaciones Universitarias por Zona</h1>
+    <table border="1" style="width:100%; border-collapse: collapse; text-align: left;">
+        <thead style="background: #e74c3c; color: white;">
+            <tr><th style="padding: 10px;">Zona Tarifaria</th><th style="padding: 10px;">Nº Estaciones</th></tr>
+        </thead>
+        <tbody>
+            {filas}
+        </tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
+
+@app.route('/api/agregaciones/estudios-universidad', methods=['GET'])
+def agregacion_estudios_universidad():
+    pipeline = [
+        {"$unwind": "$estudios"},
+        {"$group": {
+            "_id": "$universidad",
+            "nGrados": {"$sum": {"$cond": [{"$eq": ["$estudios.tipo", "GRADO"]}, 1, 0]}},
+            "nMaster": {"$sum": {"$cond": [{"$eq": ["$estudios.tipo", "MÁSTER"]}, 1, 0]}}
+        }},
+        {"$project": {"_id": 0, "universidad": "$_id", "nGrados": 1, "nMaster": 1}},
+        {"$sort": {"universidad": 1}}
+    ]
+    resultados = list(db.campus.aggregate(pipeline))
+    
+    filas = "".join([f"<tr><td>{r['universidad']}</td><td>{r['nGrados']}</td><td>{r['nMaster']}</td></tr>" for r in resultados])
+    
+    return f"""
+    <h1>Informe de Estudios por Universidad</h1>
+    <table border="1" style="width:100%; border-collapse: collapse; text-align: left;">
+        <thead style="background: #3498db; color: white;">
+            <tr>
+                <th style="padding: 10px;">Universidad</th>
+                <th style="padding: 10px;">Grados</th>
+                <th style="padding: 10px;">Másteres</th>
+            </tr>
+        </thead>
+        <tbody>
+            {filas}
+        </tbody>
+    </table>
+    <hr><a href="/">[Volver al panel]</a>
+    """
+
+@app.route('/api/agregaciones/comparar-trayectos', methods=['GET'])
+def comparar_trayectos():
+    linea_id = request.args.get('linea_id')
+    est_a = request.args.get('estacion_a')
+    est_b = request.args.get('estacion_b')
+
+    if not all([linea_id, est_a, est_b]):
+        return jsonify({"error": "Faltan parámetros"}), 400
+
+    pipeline = [
+        {"$match": {"linea_id": linea_id}},
+        {"$project": {
+            "_id": 0,
+            "estacionA": {
+                "$filter": {
+                    "input": "$estaciones",
+                    "as": "e",
+                    "cond": {"$eq": ["$$e.nombre_estacion", est_a]}
+                }
+            },
+            "estacionB": {
+                "$filter": {
+                    "input": "$estaciones",
+                    "as": "e",
+                    "cond": {"$eq": ["$$e.nombre_estacion", est_b]}
+                }
+            }
+        }},
+        {"$project": {
+            "estacionA": {"$arrayElemAt": ["$estacionA", 0]},
+            "estacionB": {"$arrayElemAt": ["$estacionB", 0]}
+        }},
+        {"$project": {
+            "distancia": {
+                "$abs": {
+                    "$subtract": [
+                        "$estacionA.indiceEnLinea",
+                        "$estacionB.indiceEnLinea"
+                    ]
+                }
+            }
+        }}
+    ]
+    
+    resultado = list(db.lineas.aggregate(pipeline))
+    # Devuelve 0 en caso de no encontrarse.
+    distancia = resultado[0]['distancia'] if resultado else 0
+
+    return f"""
+    <h1>Cálculo de Trayecto: Línea {linea_id}</h1>
+    <div style="padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <p>Origen: <strong>{est_a}</strong></p>
+        <p>Destino: <strong>{est_b}</strong></p>
+        <hr>
+        <h2 style="color: #3498db;">Distancia: {distancia} estaciones</h2>
+    </div>
+    <hr>
+    <a href="/">[Volver al panel]</a>
+    """
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

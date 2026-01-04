@@ -1,0 +1,113 @@
+# Primera consulta: listar en orden las estaciones de una linea
+
+db.lineas.aggregate([{$match:{linea_id:"X"}},
+                    {$unwind:"$estaciones"},
+                    {$sort:{"estaciones.indiceEnLinea":1}},
+                    {$project:{_id:0,nombre:"$estaciones.nombre_estacion",indice:"$estaciones.indiceEnLinea"}}])
+
+# Obtener estaciones con correspondencia Renfe.
+db.estaciones.find({tieneRenfe:true},{_id:0,nombre:1,detallesRenfe:1})
+
+# Obtener estaciones accesibles por zona tarifaria
+db.estaciones.find({zona:"X","grado_accesibilidad": {"$ne": "N"} },
+                    {_id:0,nombre:1})
+
+# Listar campus por universidad
+db.campus.find(
+  { "universidad": "X" }, 
+  { "_id": 0, "nombre": 1, "universidad": 1 }
+)
+
+# Listar campus asociados a una estación principal
+db.campus.find({"estaciones_cercanas":{"$elemMatch":{"nombre": "X", "rol": "principal"}}}, 
+                {"_id": 0, "nombre": 1, "universidad": 1 })
+
+
+# Listar estudios de GRADO por nombre, indicando campus y universidad.
+db.campus.aggregate([{$unwind:"$estudios"},
+                    {$match:{"estudios.tipo":"GRADO"}},
+                    {$project:{_id:0,"nombre":"$estudios.nombre","nombreCampus":"$nombre",universidad:1}},
+                    {$sort:{nombre:1}}])
+
+
+
+
+# AGREGACIONES PIPELINES
+
+# Contar número de estaciones en cada linea (múltiples alternativas):
+
+db.estaciones.aggregate([{$unwind: "$lineas_ids"},
+                        {$group:{_id:"$lineas_ids.linea",nEstaciones: {$count:{}}}}])
+
+db.estaciones.aggregate([{$unwind: "$lineas_ids" },
+                        {$group: {_id: "$lineas_ids.linea", nEstaciones: {$sum: 1}}},
+                        {$sort: {nEstaciones: -1}}])
+
+db.lineas.find({},{linea:"$linea_id",nEstaciones:"$total_estaciones",_id:0})
+
+# Contar número de estaciones "universitarias" por zona tarifaria
+
+db.campus.aggregate([{$unwind:"$estaciones_cercanas"}, 
+                    {$lookup:{from: "estaciones",localField: "estaciones_cercanas.nombre",foreignField: "nombre",as:"info_estacion"}},
+                    {$unwind: "$info_estacion"},
+                    {$group:{_id:"$info_estacion.zona",nEstaciones:{$count:{}}}}])
+
+
+# Contar número de grados y máster por cada universidad:
+
+db.campus.aggregate([{$unwind:"$estudios"},
+                    {$group:{
+                              _id:"$universidad",
+                              nGrados:{$sum:{$cond:[{$eq:["$estudios.tipo", "GRADO"]},1,0]}},
+                              nMaster:{$sum:{$cond:[{$eq:["$estudios.tipo", "MÁSTER"]},1,0]}}
+                            }},
+                    {$project:{_id:0,universidad:"$_id",nGrados:1,nMaster:1}}])
+
+
+# Realizar una comparación simplificada de trayectos en una misma línea mediante un campo indiceEnLinea
+
+db.lineas.aggregate([{$match:{"linea_id":"X"}},
+                     {$project:{_id:0,
+                                estacionA: { $filter:{input:"$estaciones",
+                                                      as: "e",
+                                                      cond: {$eq:["$$e.nombre_estacion","estacionA"]}
+                                                      }
+                                            },
+                                estacionB: { $filter:{input:"$estaciones",
+                                                      as: "e",
+                                                      cond: {$eq:["$$e.nombre_estacion","estacionB"]}
+                                                      }
+                                            },
+                              }
+                     },
+                     {$project: {
+                                  estacionA: {$arrayElemAt: ["$estacionA",0]},
+                                  estacionB: {$arrayElemAt: ["$estacionB",0]},
+                                }
+                     },
+                     {$project:{distancia:{$abs:{$subtract:[
+                                                            "$estacionA.indiceEnLinea",
+                                                            "$estacionB.indiceEnLinea"
+                                                            ]
+                                                }
+                                          }
+                                }
+                      }
+])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

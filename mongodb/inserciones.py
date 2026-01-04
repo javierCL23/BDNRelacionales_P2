@@ -99,7 +99,6 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
     for _, camp in campus_df.iterrows():
         nombre_campus = camp['Campus'].strip()
         
-        # MODIFICACIÓN AQUÍ: Añadimos 'creditos' y 'coordinador' al embebido
         estudios_del_campus = [
             {
                 "nombre": e['nombre'], 
@@ -129,7 +128,7 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
             "universidad": camp['Universidad'],
             "coordenadas": {"x": camp['X'], "y": camp['Y']},
             "estaciones_cercanas": estaciones,
-            "estudios": estudios_del_campus # Ahora contiene la info completa
+            "estudios": estudios_del_campus 
         }
         campus_docs.append(doc_campus)
 

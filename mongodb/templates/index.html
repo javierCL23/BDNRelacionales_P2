@@ -24,9 +24,9 @@
         select, input { width: 100%; padding: 10px; border: 1px solid #d1d5da; border-radius: 6px; box-sizing: border-box; }
         
         button { width: 100%; padding: 12px; margin-top: 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
-        .btn-del { background: var(--accent); color: white; }
-        .btn-upd { background: var(--blue); color: white; }
-        .btn-add { background: var(--success); color: white; }
+        .btn-del { background: var(--primary); color: white; }
+        .btn-upd { background: var(--primary); color: white; }
+        .btn-add { background: var(--primary); color: white; }
         .btn-query { background: var(--primary); color: white; }
         
         .info-tag { font-size: 0.75rem; color: #666; font-style: italic; }
@@ -41,7 +41,7 @@
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab(event, 'crud')">Operaciones CRUD</button>
         <button class="tab-btn" onclick="switchTab(event, 'consultas')">Consultas de Lectura</button>
-        <button class="tab-btn" onclick="switchTab(event, 'agregaciones')">Agregaciones e Informes</button>
+        <button class="tab-btn" onclick="switchTab(event, 'agregaciones')">Agregaciones (pipelines)</button>
     </div>
 
     <div id="crud" class="tab-content active">
@@ -55,6 +55,7 @@
                     </select>
                     <button type="submit" class="btn-del">Eliminar Línea Permanentemente</button>
                 </form>
+                <p class="info-tag">Elimina la línea y actualiza la información de las estaciones pertenecientes a esta.</p>
                 <hr>
                 <form action="/api/metro/cortar" method="POST">
                     <label>Línea Afectada:</label>
@@ -67,6 +68,7 @@
                     <select name="estacion_fin" id="corte-fin"></select>
                     <button type="submit" class="btn-upd">Marcar Tramo "No Accesible"</button>
                 </form>
+                <p class="info-tag">Cortar la línea marcando un tramo como no accesible.</p>
             </div>
 
             <div class="card">
@@ -78,9 +80,12 @@
                     </select>
                     <label>Estudio:</label>
                     <select name="estudio_id" id="selector-estudios-filtrados"></select>
+                    <label></label>
                     <input type="text" name="coordinador" required placeholder="Nuevo responsable">
                     <button type="submit" class="btn-upd">Actualizar Coordinador</button>
                 </form>
+                <p class="info-tag">Permite actualizar el nombre del coordinador de una titulación en un campus.</p>
+
                 <hr>
                 <form action="/api/estudios/nuevo" method="POST">
                     <input type="text" name="nombre" required placeholder="Nombre del Título">
@@ -93,9 +98,12 @@
                     </div>
                     <label>Campus:</label>
                     <select name="campus_id" class="selector-campus"></select>
+                    <label></label>
                     <input type="text" name="coordinador_init" placeholder="Coordinador inicial">
                     <button type="submit" class="btn-add">Registrar Nuevo Estudio</button>
                 </form>
+                <p class="info-tag">Permite añadir una nueva titulación con su información.</p>
+
             </div>
         </div>
     </div>
@@ -110,11 +118,15 @@
                     <select name="linea_id" class="selector-lineas"></select>
                     <button type="submit" class="btn-query">Listar Recorrido</button>
                 </form>
+                <p class="info-tag">Listado de estaciones de una línea por orden de parada.</p>
+                <hr>
 
                 <form action="/api/consultas/estaciones-renfe" method="GET">
                     <label>Estaciones con correspondencia Renfe:</label>
                     <button type="submit" class="btn-query">Ver Estaciones Renfe</button>
                 </form>
+                <p class="info-tag">Estaciones que, además de metro, conectan con Renfe.</p>
+                <hr>
 
                 <form action="/api/consultas/accesibilidad-zona" method="GET">
                     <label>Estaciones accesibles por zona:</label>
@@ -123,6 +135,7 @@
                     </select>
                     <button type="submit" class="btn-query">Filtrar por Zona</button>
                 </form>
+                <p class="info-tag">Desglose de estaciones que tienen grado de accesibilidad T.</p>
 
             </div>
 
@@ -135,18 +148,24 @@
                     </select>
                     <button type="submit" class="btn-query">Ver Campus</button>
                 </form>
+                <p class="info-tag">Desglose de campus por universidad.</p>
+                <hr>
 
                 <form action="/api/consultas/campus-estacion" method="GET">
                     <label>Campus asociados a estación principal:</label>
-                    <input type="text" name="estacion_nombre" placeholder="Ej: PUERTA DE TOLEDO">
+                    <select name="estacion_nombre" id="selector-estaciones-todas">
+                        <option value="">Cargando estaciones...</option>
+                    </select>
                     <button type="submit" class="btn-query">Buscar Campus</button>
                 </form>
+                <hr>
 
                 <form action="/api/consultas/grados-detalle" method="GET">
                     <label>Detalle completo de Grados:</label>
                     <input type="text" name="nombre_grado" placeholder="Grado contiene... (opcional)">
                     <button type="submit" class="btn-query">Listar Estudios</button>
                 </form>
+                <p class="info-tag">Listado de grados (si no se filtra por regex. -> probar con 'ar').</p>
             </div>
         </div>
     </div>
@@ -154,30 +173,12 @@
     <div id="agregaciones" class="tab-content">
         <div class="grid">
             <div class="card">
-                <h3>Estadísticas de Red</h3>
+                <h3>Análisis de Metro</h3>
                 
                 <form action="/api/agregaciones/estaciones-por-linea" method="GET">
                     <label>Ranking: Número de estaciones por línea:</label>
                     <button type="submit" class="btn-query">Calcular ranking</button>
                     <p class="info-tag">Calcula el total de estaciones agrupando por línea.</p>
-                </form>
-
-                <hr>
-
-                <form action="/api/agregaciones/universitarias-por-zona" method="GET">
-                    <label>Estaciones "Universitarias" por Zona:</label>
-                    <button type="submit" class="btn-query">Calcular distribución</button>
-                    <p class="info-tag">Cuenta estaciones conectadas a campus en cada zona tarifaria.</p>
-                </form>
-            </div>
-
-            <div class="card">
-                <h3>Análisis Avanzado</h3>
-
-                <form action="/api/agregaciones/estudios-universidad" method="GET">
-                    <label>Oferta académica (Grado vs Máster) por Universidad:</label>
-                    <button type="submit" class="btn-query">Calcular Totales</button>
-                    <p class="info-tag">Desglose de títulos ofrecidos por cada institución.</p>
                 </form>
 
                 <hr>
@@ -192,8 +193,28 @@
                         <select name="estacion_b" id="comp-estacion-b"></select>
                     </div>
                     <button type="submit" class="btn-query">Calcular Distancia entre paradas</button>
-                    <p class="info-tag">Usa 'indiceEnLinea' para determinar estaciones de separación.</p>
+                    <p class="info-tag">Determina la cantidad de paradas entre medias.</p>
                 </form>
+
+            </div>
+            
+            <div class="card">
+                <h3>Análisis de Universidad</h3>
+                
+                <form action="/api/agregaciones/estudios-universidad" method="GET">
+                    <label>Oferta académica (Grado vs Máster) por Universidad:</label>
+                    <button type="submit" class="btn-query">Calcular Totales</button>
+                    <p class="info-tag">Desglose de títulos ofrecidos por cada universidad.</p>
+                </form>
+                
+                <hr>
+                
+                <form action="/api/agregaciones/universitarias-por-zona" method="GET">
+                    <label>Estaciones "Universitarias" por Zona:</label>
+                    <button type="submit" class="btn-query">Calcular distribución</button>
+                    <p class="info-tag">Cuenta estaciones conectadas a campus en cada zona tarifaria.</p>
+                </form>
+                
             </div>
         </div>
     </div>
@@ -255,6 +276,17 @@
                         const opt = document.createElement('option');
                         opt.value = z; opt.textContent = `Zona ${z}`;
                         selZonas.appendChild(opt);
+                    });
+                }
+                // 5. Rellenar el selector de todas las estaciones para búsqueda de campus
+                const selEstacionesBusqueda = document.getElementById('selector-estaciones-todas');
+                if (selEstacionesBusqueda && data.estaciones_lista) {
+                    selEstacionesBusqueda.innerHTML = '<option value="">Seleccione una estación...</option>';
+                    data.estaciones_lista.forEach(est => {
+                        const opt = document.createElement('option');
+                        opt.value = est; // El valor ya viene en el formato correcto
+                        opt.textContent = est;
+                        selEstacionesBusqueda.appendChild(opt);
                     });
                 }
             })
