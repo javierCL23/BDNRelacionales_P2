@@ -25,7 +25,7 @@ ALONSO CANO,74,A,1993-07-01,U,T,Calle,440805.0,4476857.0,[],"[{'linea': '7', 'or
 FRANCOS RODRIGUEZ,93,A,1993-07-01,U,T,Avda,439707.0,4478875.0,[],"[{'linea': '7', 'orden': 8}]"
 ANTONIO MACHADO,94,A,1993-07-01,U,T,Calle,439269.0,4480404.0,[],"[{'linea': '7', 'orden': 6}]"
 ARGANDA DEL REY,-1,B3,1999-04-07,U,T,Paseo,462079.0,4461766.0,[],"[{'linea': '9', 'orden': 28}]"
-PEÑAGRANDE,84,A,1993-07-01,U,T,Cmno,439433.0,4481036.0,[],"[{'linea': '7', 'orden': 4}]"
+PEÑAGRANDE,84,A,1993-07-01,U,T,Cmno,439433.0,4481036.0,[],"[{'linea': '7', 'orden': 5}]"
 HERRERA ORIA,85,A,1993-07-01,U,N,Calle,440145.0,4482000.0,[],"[{'linea': '9', 'orden': 3}]"
 BARRIO DEL PILAR,85,A,1993-07-01,U,N,Calle,440507.0,4481134.0,[],"[{'linea': '9', 'orden': 4}]"
 CUATRO VIENTOS,106,A,2003-01-01,U,T,Col,432919.0,4470188.0,['C-5'],"[{'linea': '10', 'orden': 29}]"
