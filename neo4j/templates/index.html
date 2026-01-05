@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel MetroCampus Neo4j</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+        /* BARRA LATERAL (MENÚ) */
+        .sidebar {
+            width: 320px; background: #2c3e50; color: white;
+            display: flex; flex-direction: column; padding: 20px;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        h1 { font-size: 1.2rem; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
+        label { display: block; margin-top: 15px; font-size: 0.9rem; color: #bdc3c7; }
+        
+        select, input, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 4px; border: none; }
+        select { background: #fff; color: #333; }
+        
+        /* Botones de menú principal */
+        .menu-opt {
+            background: #34495e; color: white; text-align: left; margin-top: 5px;
+            cursor: pointer; transition: 0.2s; border: 1px solid #465f76;
+        }
+        .menu-opt:hover, .menu-opt.active { background: #e74c3c; border-color: #c0392b; }
+
+        /* Área de Inputs dinámicos */
+        #dynamic-form {
+            margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2);
+            border-radius: 8px; display: none;
+        }
+        
+        .action-btn { background: #27ae60; color: white; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        .action-btn:hover { background: #2ecc71; }
+
+        /* LIENZO */
+        #network { flex-grow: 1; background: #ecf0f1; position: relative; }
+        
+        /* LEYENDA FLOTANTE */
+        .legend {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(255,255,255,0.9); padding: 10px; border-radius: 5px;
+            font-size: 0.8rem; pointer-events: none;
+        }
+        .dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h1>🚇 Menú MetroCampus</h1>
+    
+    <div id="menu-list">
+        <button class="menu-opt" onclick="sel(1)">1. Consultar Línea</button>
+        <button class="menu-opt" onclick="sel(2)">2. Hubs Universitarios</button>
+        <button class="menu-opt" onclick="sel(3)">3. Estaciones con Renfe</button>
+        <button class="menu-opt" onclick="sel(4)">4. Campus por Estudio</button>
+        <button class="menu-opt" onclick="sel(5)">5. Resumen Universidades</button>
+        <button class="menu-opt" onclick="sel(6)">6. Ruta Estación -> Campus</button>
+        <button class="menu-opt" onclick="sel(7)">7. Ruta Estación -> Grado</button>
+    </div>
+
+    <div id="dynamic-form">
+        <h3 id="form-title" style="margin-top:0; font-size:1rem;">Opciones</h3>
+        
+        <div id="input-linea" class="field" style="display:none;">
+            <label>Selecciona Línea:</label>
+            <select id="sel-linea"></select>
+        </div>
+
+        <div id="input-estudio" class="field" style="display:none;">
+            <label>Selecciona Grado/Máster:</label>
+            <select id="sel-estudio"></select>
+        </div>
+
+        <div id="input-origen" class="field" style="display:none;">
+            <label>Estación Origen:</label>
+            <select id="sel-origen"></select>
+        </div>
+
+        <div id="input-campus" class="field" style="display:none;">
+            <label>Campus Destino:</label>
+            <select id="sel-campus"></select>
+        </div>
+
+        <button class="action-btn" onclick="ejecutar()">VISUALIZAR</button>
+    </div>
+    
+    <div id="status" style="margin-top: auto; font-size: 0.8rem; color: #bdc3c7;">Esperando...</div>
+</div>
+
+<div id="network">
+    <div class="legend">
+        <div><span class="dot" style="background:#3498db;"></span>Estación</div>
+        <div><span class="dot" style="background:#e74c3c;"></span>Campus</div>
+        <div><span class="dot" style="background:#f1c40f;"></span>Estudio</div>
+        <div><span class="dot" style="background:#2ecc71;"></span>Línea</div>
+    </div>
+</div>
+
+<script>
+    let currentOption = 0;
+    let network = null;
+
+    // --- CARGA DE DATOS INICIALES ---
+    document.addEventListener('DOMContentLoaded', () => {
+        fetch('/api/init')
+            .then(r => r.json())
+            .then(data => {
+                llenarSelect('sel-linea', data.lineas);
+                llenarSelect('sel-origen', data.estaciones);
+                llenarSelect('sel-campus', data.campus);
+                llenarSelect('sel-estudio', data.estudios);
+            });
+    });
+
+    function llenarSelect(id, lista) {
+        const s = document.getElementById(id);
+        lista.forEach(item => s.add(new Option(item, item)));
+    }
+
+    // --- LÓGICA DE MENÚ ---
+    function sel(opcion) {
+        currentOption = opcion;
+        
+        // UI Update
+        document.querySelectorAll('.menu-opt').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        document.getElementById('dynamic-form').style.display = 'block';
+        document.querySelectorAll('.field').forEach(f => f.style.display = 'none');
+
+        const title = document.getElementById('form-title');
+        
+        // Mostrar campos según la opción del script python
+        if(opcion === 1) {
+            title.innerText = "Ver Línea";
+            document.getElementById('input-linea').style.display = 'block';
+        } else if(opcion === 2 || opcion === 3 || opcion === 5) {
+            title.innerText = "Consulta Directa";
+            // No requieren inputs extra
+        } else if(opcion === 4) {
+            title.innerText = "Buscar Campus";
+            document.getElementById('input-estudio').style.display = 'block';
+        } else if(opcion === 6) {
+            title.innerText = "Ruta a Campus";
+            document.getElementById('input-origen').style.display = 'block';
+            document.getElementById('input-campus').style.display = 'block';
+        } else if(opcion === 7) {
+            title.innerText = "Ruta para Estudiar...";
+            document.getElementById('input-origen').style.display = 'block';
+            document.getElementById('input-estudio').style.display = 'block';
+        }
+    }
+
+    // --- EJECUCIÓN ---
+    function ejecutar() {
+        const payload = {
+            opcion: String(currentOption),
+            data: {
+                linea: document.getElementById('sel-linea').value,
+                estudio: document.getElementById('sel-estudio').value,
+                origen: document.getElementById('sel-origen').value,
+                campus: document.getElementById('sel-campus').value
+            }
+        };
+
+        const status = document.getElementById('status');
+        status.innerText = "Consultando Neo4j...";
+
+        fetch('/api/accion', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.nodes.length === 0) {
+                status.innerText = "No se encontraron resultados.";
+                alert("La consulta no devolvió datos.");
+                return;
+            }
+            dibujar(data);
+            status.innerText = `Mostrando ${data.nodes.length} nodos.`;
+        })
+        .catch(e => { console.error(e); status.innerText = "Error de conexión"; });
+    }
+
+    // --- DIBUJADO VIS.JS ---
+    function dibujar(data) {
+        const container = document.getElementById('network');
+        
+        const graphData = {
+            nodes: new vis.DataSet(data.nodes),
+            edges: new vis.DataSet(data.edges)
+        };
+
+        const options = {
+            nodes: {
+                shape: 'dot', size: 20, font: {size: 14, color: '#333'}, borderWidth: 2
+            },
+            edges: {
+                width: 2, smooth: { type: 'continuous' }, color: {color:'#bdc3c7', highlight:'#2c3e50'}
+            },
+            groups: {
+                Estacion: { color: {background:'#3498db', border:'#2980b9'} },
+                Campus:   { shape:'box', color:{background:'#e74c3c', border:'#c0392b'}, font:{color:'white'} },
+                Estudio:  { shape:'star', color:{background:'#f1c40f', border:'#f39c12'}, size: 30 },
+                Linea:    { shape:'diamond', color:{background:'#2ecc71', border:'#27ae60'}, size: 25 },
+                Default:  { color: '#95a5a6' }
+            },
+            physics: {
+                stabilization: false,
+                barnesHut: { gravitationalConstant: -4000, springConstant: 0.04 }
+            },
+            interaction: { hover: true }
+        };
+
+        if(network) network.destroy();
+        network = new vis.Network(container, graphData, options);
+    }
+</script>
+
+</body>
+</html>

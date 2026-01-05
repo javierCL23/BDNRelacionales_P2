@@ -91,6 +91,7 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
             "campus": est['Campus'].strip(),
             "tipo": tipo,
             "creditos": est['Créditos'],
+            #"rama": est["Rama"],
             "coordinador": est['Coordinador']
         })
 
