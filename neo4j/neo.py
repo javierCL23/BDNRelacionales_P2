@@ -1,56 +1,46 @@
 from neo4j import GraphDatabase
 import pandas as pd
-import os
+from os import system,name
 
+def clear_screen():
+    system('cls' if name == 'nt' else 'clear')
 
 def main():
-
     global driver
-    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "123456789"))
+    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password_seguro"))
     driver.verify_connectivity()
 
-    #"""
-    campus_df = pd.read_csv("campus.csv")
-    estudios_df = pd.read_csv("estudios2.csv")
-    lineas_df = pd.read_csv("estaciones.csv")
-
-    CargaLineas(lineas_df)
-    CargaUnis(campus_df)
-    CargaEstudios(estudios_df)
-    #"""
-
-    #"""
     while True:
 
         MuestraMenu()
         opcion = input("Introduzca una opcion: ")
 
         if opcion == "1":
-            os.system("cls")
+            clear_screen()
             
             linea = input("Introduzca el número de línea: ")
             ConsultaLinea(linea)
 
         elif opcion == "2":
-            os.system("cls")
+            clear_screen()
             ConsultaHubs()
 
         elif opcion == "3":
-            os.system("cls")
+            clear_screen()
             ConsultaRenfe()
 
         elif opcion == "4":
-            os.system("cls")
+            clear_screen()
             campus = ConsultaCampus(EligeEstudios())
 
             for c in campus: print(f"{c[0]}, {c[1]}")
 
         elif opcion == "5":
-            os.system("cls")
+            clear_screen()
             ResumenUnis()
 
         elif opcion == "6":
-            os.system("cls")
+            clear_screen()
             estacion, campus = IntroducirDatos()
 
             print('')
@@ -58,7 +48,7 @@ def main():
                 print("No hay estaciones de metro cerca del campus seleccionado.")
 
         elif opcion == "7":
-            os.system("cls")
+            clear_screen()
 
             estudio = EligeEstudios()
             campus = ConsultaCampus(estudio)
@@ -71,20 +61,20 @@ def main():
                     print(f"No existe ruta de metro hasta el {c[0]}.\n")
 
         elif opcion == "8":
-            os.system("cls")
+            clear_screen()
             break
 
         else:
-            os.system("cls")
+            clear_screen()
             continue
 
 
         input("Pulse enter para continuar:")
-        os.system("cls")
+        clear_screen()
     #"""
 
-def CargaLineas(df):
-
+def CargaLineas(file):
+    df = pd.read_csv(file)
     driver.execute_query("""
     UNWIND """+f"{list(df['DENOMINACION'])}"+""" as e_nombre
     MERGE (e:Estacion {nombre:e_nombre})
@@ -177,8 +167,8 @@ def CargaLineas(df):
 
     """)
 
-def CargaUnis(df):
-
+def CargaUnis(file):
+    df = pd.read_csv(file)
     driver.execute_query("""
     UNWIND """+f"{list(df['Campus'])}"+""" as c_nombre
     MERGE (c:Campus {nombre: c_nombre})
@@ -234,8 +224,8 @@ def CargaUnis(df):
             SET r.rol = 'Alternativa'
             """)
 
-def CargaEstudios(df):
-
+def CargaEstudios(file):
+    df = pd.read_csv(file)
     driver.execute_query("""
     UNWIND """+f"{list(df['Estudios'])}"+""" as e_nombre
     MERGE (e:Estudio {nombre: e_nombre})
@@ -258,7 +248,6 @@ def CargaEstudios(df):
         CREATE (c)-[:OFRECE]->(e);
         """)
 
-
 def MuestraMenu():
 
     print("1. Consultar estaciones de una línea.")
@@ -269,7 +258,6 @@ def MuestraMenu():
     print("6. Consultar rutas estación-campus.")
     print("7. Consultar rutas estación-grado.")
     print("8. Salir.")
-
 
 def ConsultaLinea(linea):
 
@@ -303,10 +291,8 @@ def ConsultaLinea(linea):
 
         print('')
 
-
 def ConsultaHubs():
-
-    records, summary, keys = driver.execute_query("""
+    records, _, _ = driver.execute_query("""
     MATCH (c:Campus)-[:CERCANA]->(e:Estacion)
     WHERE COUNT { (c)-[:CERCANA]->(e) } > 1
     RETURN e.nombre AS estacion
@@ -321,8 +307,7 @@ def ConsultaHubs():
             print(f"{record['estacion']}")
 
 def ConsultaRenfe():
-
-    records, summary, keys = driver.execute_query("""
+    records, _, _ = driver.execute_query("""
     MATCH (c)-[:CERCANA]->(e:Estacion)
     WHERE e.Renfe IS NOT NULL
     RETURN e.nombre as nombre, e.Renfe as renfe, c.nombre as campus, c.Universidad as universidad
@@ -351,13 +336,10 @@ def ConsultaRenfe():
                 print(linea, end = ", ")
             print(f"{record['renfe'][-2]} y {record['renfe'][-1]}")
 
-        
-
 def EligeEstudios():
 
-    records, summary, keys = driver.execute_query("""
+    records, _, _ = driver.execute_query("""
     MATCH (e:Estudio)
-
     return e.nombre as estudio
     """)
 
@@ -365,23 +347,19 @@ def EligeEstudios():
     idx = 1
     for record in records:
         record = record.data()
-
         espacio = '  ' if idx < 10 else ' '
         print(f"{idx}.{espacio}{record['estudio']}")
         estudios.append(record['estudio'])
         idx += 1
-    
 
     opcion = ''
     while not opcion.isnumeric() or int(opcion) not in list(range(1, idx)):
         opcion = input("Elija un grado: ")
 
-    os.system("cls")
+    clear_screen()
     return estudios[int(opcion) - 1]
 
-
 def ConsultaCampus(grado):
-
     grado = f"'{grado}'"
     records, _, _ = driver.execute_query("""
     MATCH (e:Estudio {nombre:"""+grado+"""})
@@ -399,7 +377,6 @@ def ConsultaCampus(grado):
     return campus
 
 def ResumenUnis():
-
     records, _, _ = driver.execute_query("""
     MATCH (u)-[:OFRECE]->(e)
     RETURN u.Universidad as universidad, e.nombre as estudio
@@ -424,7 +401,6 @@ def ResumenUnis():
         print(f"Nº de másters: {universidades[universidad]['masters']}", end = '\n\n')
 
 def QuitaTildes(palabra):
-
     palabra = palabra.replace('á', 'a')
     palabra = palabra.replace('é', 'e')
     palabra = palabra.replace('í', 'i')
@@ -434,7 +410,6 @@ def QuitaTildes(palabra):
     return palabra
 
 def LineasDe(estacion, renfe = False):
-
     estacion = f"'{estacion}'"
 
     if not renfe:
@@ -462,7 +437,6 @@ def LineasDe(estacion, renfe = False):
     return lineas
 
 def IntroducirDatos(estacion = True, campus = True):
-
     if estacion:
         valido = False
         while not valido:
@@ -497,9 +471,7 @@ def IntroducirDatos(estacion = True, campus = True):
 
     return estacion, campus
 
-
 def CalculaRuta(estacion, campus):
-
     if estacion[0] != "'": estacion = f"'{estacion}'"
     if campus[0] != "'": campus = f"'{campus}'"
     
@@ -563,17 +535,5 @@ def CalculaRuta(estacion, campus):
 
         print(f"Ruta con {transbordos} transbordos\n")
 
-
-
-
-
-
-
-
-
-
-
-
-
-main()
-
+if __name__ == "__main__":
+    main()
