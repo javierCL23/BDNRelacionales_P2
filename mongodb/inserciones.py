@@ -91,7 +91,7 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
             "campus": est['Campus'].strip(),
             "tipo": tipo,
             "creditos": est['Créditos'],
-            #"rama": est["Rama"],
+            "rama": est["Rama"],
             "coordinador": est['Coordinador']
         })
 
@@ -105,7 +105,8 @@ def cargarUniversidad(dirCampus = "campus.csv", dirEstudios = "estudios.csv"):
                 "nombre": e['nombre'], 
                 "tipo": e['tipo'],
                 "creditos": e['creditos'],
-                "coordinador": e['coordinador']
+                "rama": e['rama'],
+                "coordinador": e['coordinador'],
             } 
             for e in estudios_list if e['campus'].upper() == nombre_campus.upper()
         ]
@@ -140,8 +141,7 @@ def main():
     sleep(3)
 
     #Conexión y limpieza de la base de datos
-    MONGO_URL = os.environ.get('MONGO_URL')
-    print("MONGO:",MONGO_URL)
+    MONGO_URL = os.environ.get('MONGO_URL',"mongodb://127.0.0.1:27017")
     client = mongoConnect(MONGO_URL)
     if not client:
         return 

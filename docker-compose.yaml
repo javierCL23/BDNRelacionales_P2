@@ -30,6 +30,8 @@ services:
       - "7687:7687"
     networks:
       - metrocampus_net
+    environment:
+         NEO4J_AUTH: neo4j/password_seguro
 
   neo-app:
     build:

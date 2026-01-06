@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 
 # Conexión a MongoDB
-MONGO_URL = os.environ.get('MONGO_URL')
+MONGO_URL = os.environ.get('MONGO_URL',"mongodb://127.0.0.1:27017")
 client = MongoClient(MONGO_URL)
 db = client["Practica2_DB"]
 
@@ -458,6 +458,122 @@ def comparar_trayectos():
         <p>Destino: <strong>{est_b}</strong></p>
         <hr>
         <h2 style="color: #3498db;">Distancia: {distancia} estaciones</h2>
+    </div>
+    <hr>
+    <a href="/">[Volver al panel]</a>
+    """
+
+@app.route('/api/agregaciones/recomendacion', methods=['GET'])
+def recomendacion_campus():
+    linea_id = request.args.get('linea_id')
+    est_origen = request.args.get('estacion_origen')
+    nombre_grado = request.args.get('nombre_grado')
+
+    if not all([linea_id, est_origen, nombre_grado]):
+        return "<h1>Error: Faltan parámetros</h1>", 400
+
+    pipeline_origen = [
+        {"$match": {"nombre": est_origen}},
+        {"$unwind": "$lineas_ids"},
+        {"$match": {"lineas_ids.linea": linea_id}},
+        {"$project": {"_id": 0, "orden": "$lineas_ids.orden"}}
+    ]
+
+    res_origen = list(db.estaciones.aggregate(pipeline_origen))
+
+    if not res_origen:
+        return "Error: La estación de origen no pertenece a esa línea."
+
+    indice_origen = res_origen[0]['orden']
+
+    pipeline = [
+        # 1. Separar por estudios
+        {"$unwind": "$estudios"},
+
+        # 2. Filtrar por grados con regex válido
+        {
+            "$match": {
+                "estudios.nombre": {"$regex": nombre_grado, "$options": "i"},
+                "estudios.tipo": "GRADO"  
+            }
+        },
+
+        # 3. Separar por estaciones
+        {"$unwind": "$estaciones_cercanas"},
+
+        # 4. Cruzamos con la colección estaciones
+        {
+            "$lookup": {
+                "from": "estaciones",
+                "localField": "estaciones_cercanas.nombre",
+                "foreignField": "nombre",
+                "as": "info_estacion"
+            }
+        },
+        {"$unwind": "$info_estacion"},
+
+        # 5. Filtrar por línea
+        {"$unwind": "$info_estacion.lineas_ids"},
+        {
+            "$match": {
+                "info_estacion.lineas_ids.linea": linea_id
+            }
+        },
+
+        # 6. Cálculo de distancias
+        {
+            "$project": {
+                "campus": "$nombre",
+                "universidad": "$universidad",
+                "grado_completo": "$estudios.nombre",
+                "coordinador": "$estudios.coordinador",
+                "rama": "$estudios.rama", 
+
+                "estacion_destino": "$estaciones_cercanas.nombre",
+                "distancia": {
+                    "$abs": {
+                        "$subtract": ["$info_estacion.lineas_ids.orden", indice_origen]
+                    }
+                }
+            }
+        },
+        # 7. Quedarnos con la más cercana
+        {"$sort": {"distancia": 1}},
+        {"$limit": 1}
+    ]
+
+    resultados = list(db.campus.aggregate(pipeline))
+
+    if not resultados:
+        return f"<h1>Sin resultados</h1><p>No hay campus con <strong>{nombre_grado}</strong> en la Línea {linea_id}.</p><a href='/'>Volver</a>"
+
+    mejor = resultados[0]
+    rama_str = mejor.get('rama', 'No especificada')
+
+    return f"""
+    <h1 style="text-align:center;">Campus Recomendado</h1>
+    <div style="background: #34495e; color: white; padding: 15px; border-radius: 8px 8px 0 0;">
+        <h2 style="margin:0;">{mejor['grado_completo']}</h2>
+        <p style="margin: 5px 0 0 0; font-size: 0.9em; opacity: 0.9;">
+            Rama: <strong>{rama_str}</strong> | Coordinador: <strong>{mejor['coordinador']}</strong>
+        </p>
+    </div>
+
+    <div style="padding: 20px; border: 2px solid #34495e; border-top: none; border-radius: 0 0 8px 8px; background: #fff; text-align: center;">
+        <h3 style="color: #2c3e50; margin-top: 0;">{mejor['campus']}</h3>
+        <h4 style="color: #7f8c8d; margin-bottom: 20px;">{mejor['universidad']}</h4>
+        
+        <div style="display: flex; justify-content: space-around; align-items: center; background: #f4f6f7; padding: 15px; border-radius: 6px;">
+            <div>
+                <small>ESTÁS EN</small><br>
+                <strong>{est_origen}</strong>
+            </div>
+            <div style="font-size: 1.5rem; color: #27ae60;">➝ {mejor['distancia']} paradas ➝</div>
+            <div>
+                <small>VIAJA A</small><br>
+                <strong>{mejor['estacion_destino']}</strong>
+            </div>
+        </div>
     </div>
     <hr>
     <a href="/">[Volver al panel]</a>

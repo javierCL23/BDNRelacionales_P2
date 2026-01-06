@@ -206,7 +206,6 @@
                     <button type="submit" class="btn-query">Calcular Totales</button>
                     <p class="info-tag">Desglose de títulos ofrecidos por cada universidad.</p>
                 </form>
-                
                 <hr>
                 
                 <form action="/api/agregaciones/universitarias-por-zona" method="GET">
@@ -214,8 +213,26 @@
                     <button type="submit" class="btn-query">Calcular distribución</button>
                     <p class="info-tag">Cuenta estaciones conectadas a campus en cada zona tarifaria.</p>
                 </form>
-                
-            </div>
+                <hr>
+
+                <form action="/api/agregaciones/recomendacion" method="GET">
+                    
+                    <label>1. ¿En qué línea estás?:</label>
+                    <select name="linea_id" class="selector-lineas" onchange="cargarEstacionesRecomendador(this.value)">
+                        <option value="">Seleccione línea...</option>
+                    </select>
+
+                    <label>2. ¿En qué estación?:</label>
+                    <select name="estacion_origen" id="rec-estacion-origen" disabled>
+                        <option value="">Seleccione primero una línea...</option>
+                    </select>
+
+                    <label>3. Grado deseado:</label>
+                    <input type="text" name="nombre_grado" required placeholder="Ej: Informática">
+
+                    <button type="submit" class="btn-query">Calcular Mejor Opción</button>
+                </form>
+                <p class="info-tag">Localiza el campus más cercano (en número de paradas) dentro de tu línea actual.</p>            </div>
         </div>
     </div>
 
@@ -332,6 +349,35 @@
                     selA.innerHTML += opt;
                     selB.innerHTML += opt;
                 });
+            });
+    }
+
+    function cargarEstacionesRecomendador(lineaId) {
+        const selector = document.getElementById('rec-estacion-origen');
+        
+        if(!lineaId) {
+            selector.innerHTML = '<option value="">Seleccione primero una línea...</option>';
+            selector.disabled = true;
+            return;
+        }
+
+        selector.disabled = false;
+        selector.innerHTML = '<option>Cargando...</option>';
+
+        fetch(`/api/data/estaciones/${lineaId}`)
+            .then(res => res.json())
+            .then(estaciones => {
+                selector.innerHTML = "";
+                estaciones.forEach(est => {
+                    let opt = document.createElement('option');
+                    opt.value = est;
+                    opt.textContent = est;
+                    selector.appendChild(opt);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                selector.innerHTML = '<option>Error cargando</option>';
             });
     }
 </script>

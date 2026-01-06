@@ -1,9 +1,10 @@
 import pandas as pd
 from neo4j import GraphDatabase
 import time
+import os
 
 # Configuración de conexión
-URI = "neo4j://localhost:7687"
+URI = os.environ.get("NEO_URL","neo4j://localhost:7687")
 AUTH = ("neo4j", "password_seguro")
 
 def get_driver():
@@ -119,6 +120,7 @@ def cargar_estudios(driver, df):
             """, est=row['Estudios'], camp=row['Campus'], cred=row['Créditos'], coord=row['Coordinador'])
 
 def main():
+    time.sleep(10)
     driver = get_driver()
     if not driver:
         return
