@@ -23,6 +23,27 @@ services:
     networks:
       - metrocampus_net
 
+  neo:
+    image: neo4j:latest
+    container_name: neo
+    ports:
+      - "7687:7687"
+    networks:
+      - metrocampus_net
+
+  neo-app:
+    build:
+      context: .
+      dockerfile: build/neo4j/Dockerfile
+    container_name: neo4j-app
+    ports:
+      - "5001:5001"
+    environment:
+      - NEO_URL=neo4j://neo:7687
+    depends_on:
+      - neo
+    networks:
+      - metrocampus_net
 networks:
   metrocampus_net:
     driver: bridge

@@ -1,15 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 from neo4j import GraphDatabase
+import os
 
 app = Flask(__name__)
 
-# --- CONFIGURACIÓN IGUAL A TU NEO.PY ---
-URI = "neo4j://localhost:7687"
-AUTH = ("neo4j", "password_seguro") # Tu contraseña
+URI = os.environ.get("NEO_URL","neo4j://localhost:7687")
+AUTH = ("neo4j", "password_seguro")
 driver = GraphDatabase.driver(URI, auth=AUTH)
 
-# --- HELPER: CONVERTIR A FORMATO VIS.JS ---
-# --- HELPER: CONVERTIR A FORMATO VIS.JS ---
+
 def construir_grafo(result):
     nodes = {}
     edges = []
@@ -40,20 +39,18 @@ def construir_grafo(result):
                     }
 
             # 2. SI ES UN CAMINO (Path) 
-            # ¡IMPORTANTE! Comprobar esto ANTES que la relación, 
-            # porque los paths también tienen start_node.
             elif hasattr(item, 'nodes') and hasattr(item, 'relationships'):
-                # Recursivamente extraemos los nodos
+                # Recursivamente extraer los nodos
                 sub_nodes, sub_edges = construir_grafo([{"n": n} for n in item.nodes])
                 nodes.update({n['id']: n for n in sub_nodes})
                 
-                # Procesamos las relaciones del camino manualmente
+                # Procesar las relaciones del camino manualmente
                 for rel in item.relationships:
                     start = rel.start_node.element_id if hasattr(rel.start_node, 'element_id') else rel.start_node.id
                     end = rel.end_node.element_id if hasattr(rel.end_node, 'element_id') else rel.end_node.id
                     props = dict(rel)
                     
-                    # Intentamos sacar el nombre de la línea, si no, el tipo
+                    # Intentar sacar nombre de la línea, si no, el tipo
                     lbl = props.get('linea', rel.type)
                     
                     edges.append({
@@ -116,7 +113,7 @@ def accion():
     # 1. CONSULTAR LÍNEA
     if opcion == '1':
         linea_fmt = f"'R'" if data['linea'] == 'R' else f"'L{data['linea']}'"
-        # Traemos la línea, sus estaciones y las conexiones internas para ver el dibujo
+        # Traer la línea, sus estaciones y las conexiones internas para ver el dibujo
         query = f"""
         MATCH (l:Linea {{nombre: {linea_fmt}}})
         MATCH (l)-[r:TIENE_ESTACION]->(e:Estacion)
@@ -154,14 +151,12 @@ def accion():
 
     # 5. RESUMEN UNIS (Visualización Jerárquica)
     elif opcion == '5':
-        # En vez de texto, mostramos la jerarquía: Universidad -> Campus
         query = """
         MATCH (c:Campus)
         // Creamos nodo ficticio visual para la uni si queremos agrupar, 
         // pero aquí basta con mostrar los campus agrupados por propiedad 'Universidad'
         RETURN c
         """
-        # Nota: En el frontend agruparemos por colores según c.Universidad
 
     # 6. RUTA ESTACIÓN -> CAMPUS
     elif opcion == '6':
@@ -173,22 +168,21 @@ def accion():
         RETURN start, c, p
         """
 
-    # 7. RUTA ESTACIÓN -> GRADO (La más compleja)
+    # 7. RUTA ESTACIÓN -> GRADO
     elif opcion == '7':
         params = {'origen': data['origen'], 'estudio': data['estudio']}
         query = """
         MATCH (start:Estacion {nombre: $origen})
         
-        // 1. Capturamos la relación entre Campus y Estudio (r_ofrece)
+        // 1. Capturar la relación entre Campus y Estudio (r_ofrece)
         MATCH (est:Estudio {nombre: $estudio})<-[r_ofrece:OFRECE]-(c:Campus)
         
-        // 2. Capturamos la relación entre Campus y su estación cercana (r_cercana)
+        // 2. Capturar la relación entre Campus y su estación cercana (r_cercana)
         MATCH (c)-[r_cercana:CERCANA]-(end:Estacion)
         
-        // 3. Calculamos el camino
+        // 3. Calcular el camino
         MATCH p = SHORTEST 1 (start)-[:SIGUIENTE*]->(end)
         
-        // 4. ¡IMPORTANTE! Devolvemos también r_ofrece y r_cercana
         RETURN start, est, c, p, r_ofrece, r_cercana
         """
 
@@ -199,4 +193,4 @@ def accion():
     return jsonify({"nodes": nodes, "edges": edges})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5001)
