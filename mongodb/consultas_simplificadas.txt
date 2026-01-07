@@ -1,5 +1,39 @@
-# Primera consulta: listar en orden las estaciones de una linea
+# CONSULTAS CRUD
 
+# Borrar una línea de metro
+db.lineas.delete_one({"linea_id": linea_id})
+db.estaciones.update_many(
+    {"lineas_ids.linea": linea_id},
+    {"$pull": {"lineas_ids": {"linea": linea_id}}}
+)
+db.estaciones.delete_many({"lineas_ids": {"$size": 0}})
+
+# Cortar la línea de metro
+db.estaciones.update_many(
+    {"nombre": {"$in": rango}},
+    {"$set": {"grado_accesibilidad": "N"}}
+)
+
+# Actualizar coordinador
+db.campus.update_one(
+        { "nombre": nombre_campus, "estudios.nombre": nombre_estudio },
+        { "$set": { "estudios.$.coordinador": nuevo_coord } }
+    )
+
+# Agregar nueva titulación
+nuevo_estudio_embebido = {
+    "nombre": nombre,
+    "tipo": tipo,
+    "creditos": int(creditos),
+    "coordinador": coordinador
+}
+db.campus.update_one(
+    {"nombre": nombre_campus},
+    {"$push": {"estudios": nuevo_estudio_embebido}}
+)
+
+# CONSULTAS LECTURA
+# Primera consulta: listar en orden las estaciones de una linea
 db.lineas.aggregate([{$match:{linea_id:"X"}},
                     {$unwind:"$estaciones"},
                     {$sort:{"estaciones.indiceEnLinea":1}},
@@ -30,12 +64,9 @@ db.campus.aggregate([{$unwind:"$estudios"},
                     {$sort:{nombre:1}}])
 
 
-
-
 # AGREGACIONES PIPELINES
 
 # Contar número de estaciones en cada linea (múltiples alternativas):
-
 db.estaciones.aggregate([{$unwind: "$lineas_ids"},
                         {$group:{_id:"$lineas_ids.linea",nEstaciones: {$count:{}}}}])
 
@@ -95,7 +126,49 @@ db.lineas.aggregate([{$match:{"linea_id":"X"}},
                       }
 ])
 
-
+# Cálculo del campus más cercano dado un grado
+db.campus.aggregate([
+        {"$unwind": "$estudios"},
+        {
+            "$match": {
+                "estudios.nombre": {"$regex": nombre_grado, "$options": "i"},
+                "estudios.tipo": "GRADO"  
+            }
+        },
+        {"$unwind": "$estaciones_cercanas"},
+        {
+            "$lookup": {
+                "from": "estaciones",
+                "localField": "estaciones_cercanas.nombre",
+                "foreignField": "nombre",
+                "as": "info_estacion"
+            }
+        },
+        {"$unwind": "$info_estacion"},
+        {"$unwind": "$info_estacion.lineas_ids"},
+        {
+            "$match": {
+                "info_estacion.lineas_ids.linea": linea_id
+            }
+        },
+        {
+            "$project": {
+                "campus": "$nombre",
+                "universidad": "$universidad",
+                "grado_completo": "$estudios.nombre",
+                "coordinador": "$estudios.coordinador",
+                "rama": "$estudios.rama", 
+                "estacion_destino": "$estaciones_cercanas.nombre",
+                "distancia": {
+                    "$abs": {
+                        "$subtract": ["$info_estacion.lineas_ids.orden", indice_origen]
+                    }
+                }
+            }
+        },
+        {"$sort": {"distancia": 1}},
+        {"$limit": 1}
+        ])
 
 
 
