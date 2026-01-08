@@ -176,8 +176,8 @@ def ConsultaRenfe():
 def EligeRama():
 
     records, _, _ = driver.execute_query("""
-    MATCH (e:Estudio)
-    RETURN DISTINCT properties(e).rama AS rama
+    MATCH (c)-[r:OFRECE]-(e)
+    RETURN DISTINCT properties(r).rama AS rama
     """)
 
     ramas = list()
@@ -199,7 +199,7 @@ def EligeRama():
 def EligeEstudios(rama):
 
     records, _, _ = driver.execute_query("""
-    MATCH (e:Estudio {rama:$rama})
+    MATCH (c)-[:OFRECE {rama:$rama}]-(e:Estudio)
     RETURN e.nombre AS estudio
     """, rama = rama)
 
@@ -243,8 +243,8 @@ def ConsultaCampus(estudio):
 def ResumenUnis():
 
     records, _, _ = driver.execute_query("""
-    MATCH (u)-[:OFRECE]->(e)
-    RETURN u.Universidad AS universidad, e.nombre AS estudio
+    MATCH (c)-[:OFRECE]->(e:Estudio)
+    RETURN c.Universidad AS universidad, e.nombre AS estudio
     """)
 
     universidades = dict()
@@ -263,7 +263,7 @@ def ResumenUnis():
     for universidad in universidades:                                                           # Por cada universidad.
         print(f"{universidad}:", end = '\n\t')                                                  # Universidad:
         print(f"Nº de grados:  {universidades[universidad]['grados']}", end = '\n\t')           #       Nº de grados:  x
-    print(f"Nº de másters: {universidades[universidad]['masters']}", end = '\n\n')              #       Nº de másters: y       
+        print(f"Nº de másters: {universidades[universidad]['masters']}", end = '\n\n')              #       Nº de másters: y       
 
 def LineasDe(estacion, renfe = False):
 
