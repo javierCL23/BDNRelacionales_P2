@@ -1,12 +1,9 @@
 import pandas as pd
 from neo4j import GraphDatabase
 import time
+import os
 
-# Configuración de conexión
-URI = "neo4j://localhost:7687"
-AUTH = ("neo4j", "password_seguro")
-
-def get_driver():
+def get_driver(URI,AUTH):
     try:
         driver = GraphDatabase.driver(URI, auth=AUTH)
         driver.verify_connectivity()
@@ -108,20 +105,35 @@ def cargar_campus(driver, df):
 def cargar_estudios(driver, df):
     print("Cargando Estudios...")
     with driver.session() as session:
+        # Crear nodo estudio (Nombre común)
         session.run("UNWIND $nombres as e_nombre MERGE (e:Estudio {nombre: e_nombre})", nombres=list(df['Estudios']))
 
         for i, row in df.iterrows():
+            # Información relativa a cada campus en la arista RELACIÓN [:OFRECE]
             session.run("""
                 MATCH (e:Estudio {nombre: $est})
                 MATCH (c:Campus {nombre: $camp})
-                SET e.creditos = $cred, e.coordinador = $coord, e.rama = $rama
-                MERGE (c)-[:OFRECE]->(e)
-            """, est=row['Estudios'], camp=row['Campus'], cred=row['Créditos'], coord=row['Coordinador'], rama=row['Rama'])
-
+                MERGE (c)-[r:OFRECE]->(e)
+                SET r.creditos = $cred, 
+                    r.coordinador = $coord, 
+                    r.rama = $rama
+            """, est=row['Estudios'], camp=row['Campus'], 
+                 cred=row['Créditos'], coord=row['Coordinador'], rama=row['Rama'])
 def main():
-    driver = get_driver()
-    if not driver:
-        return
+
+    # Configuración de conexión
+    URI = os.environ.get("NEO_URL","neo4j://localhost:7687")
+    AUTH = ("neo4j", "password_seguro")
+
+    print(URI)
+
+    ready = False
+    while not ready:
+        driver = get_driver(URI,AUTH)
+        if driver:
+            ready = True
+        else:
+            time.sleep(3)
 
     # Cargar CSVs
     try:
