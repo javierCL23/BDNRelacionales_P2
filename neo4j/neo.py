@@ -200,7 +200,6 @@ def EligeEstudios(rama):
 
     records, _, _ = driver.execute_query("""
     MATCH (e:Estudio {rama:$rama})
-
     RETURN e.nombre AS estudio
     """, rama = rama)
 

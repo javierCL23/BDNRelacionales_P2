@@ -2,12 +2,11 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Panel MetroCampus Neo4j</title>
+    <title>Panel Neo4j</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <style>
         body { margin: 0; display: flex; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
         
-        /* BARRA LATERAL (MENÚ) */
         .sidebar {
             width: 320px; background: #2c3e50; color: white;
             display: flex; flex-direction: column; padding: 20px;
@@ -17,17 +16,17 @@
         h1 { font-size: 1.2rem; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; margin-top: 0; }
         label { display: block; margin-top: 15px; font-size: 0.9rem; color: #bdc3c7; }
         
-        select, input, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 4px; border: none; }
-        select { background: #fff; color: #333; }
+        /* CAMBIO: Inputs en lugar de Select para permitir búsqueda */
+        input[list], select, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 4px; border: none; box-sizing: border-box;}
+        input[list], select { background: #fff; color: #333; }
         
-        /* Botones de menú principal */
         .menu-opt {
             background: #34495e; color: white; text-align: left; margin-top: 5px;
             cursor: pointer; transition: 0.2s; border: 1px solid #465f76;
+            width: 100%; /* Asegurar ancho */
         }
         .menu-opt:hover, .menu-opt.active { background: #e74c3c; border-color: #c0392b; }
 
-        /* Área de Inputs dinámicos */
         #dynamic-form {
             margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2);
             border-radius: 8px; display: none;
@@ -36,14 +35,30 @@
         .action-btn { background: #27ae60; color: white; font-weight: bold; margin-top: 15px; cursor: pointer; }
         .action-btn:hover { background: #2ecc71; }
 
-        /* LIENZO */
-        #network { flex-grow: 1; background: #ecf0f1; position: relative; }
+        /* AREA PRINCIPAL */
+        #main-container { flex-grow: 1; position: relative; background: #ecf0f1; display: flex; justify-content: center; align-items: center;}
         
-        /* LEYENDA FLOTANTE */
+        #network { width: 100%; height: 100%; position: absolute; top:0; left:0; }
+
+        /* OVERLAYS */
+        #info-overlay {
+            z-index: 5; background: white; padding: 20px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 80%; max-height: 80%;
+            overflow-y: auto; display: none; text-align: center;
+        }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background: #2c3e50; color: white; }
+        tr:hover { background: #f1f1f1; }
+
+        .error-msg { color: #c0392b; font-size: 1.2rem; font-weight: bold; }
+
         .legend {
             position: absolute; bottom: 20px; right: 20px;
             background: rgba(255,255,255,0.9); padding: 10px; border-radius: 5px;
-            font-size: 0.8rem; pointer-events: none;
+            font-size: 0.8rem; pointer-events: none; z-index: 6;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; }
     </style>
@@ -51,7 +66,7 @@
 <body>
 
 <div class="sidebar">
-    <h1>🚇 Menú MetroCampus</h1>
+    <h1>Consola Práctica 2 Neo4j</h1>
     
     <div id="menu-list">
         <button class="menu-opt" onclick="sel(1)">1. Consultar Línea</button>
@@ -68,23 +83,23 @@
         
         <div id="input-linea" class="field" style="display:none;">
             <label>Selecciona Línea:</label>
-            <select id="sel-linea"></select>
-        </div>
+            <select id="sel-linea"></select> </div>
 
         <div id="input-estudio" class="field" style="display:none;">
-            <label>Selecciona Grado/Máster:</label>
-            <select id="sel-estudio"></select>
+            <label>Busca Grado/Máster:</label>
+            <input list="list-estudios" id="inp-estudio" placeholder="Escribe para buscar...">
+            <datalist id="list-estudios"></datalist>
         </div>
 
         <div id="input-origen" class="field" style="display:none;">
             <label>Estación Origen:</label>
-            <select id="sel-origen"></select>
+            <input list="list-estaciones" id="inp-origen" placeholder="Nombre estación...">
+            <datalist id="list-estaciones"></datalist>
         </div>
 
         <div id="input-campus" class="field" style="display:none;">
             <label>Campus Destino:</label>
-            <select id="sel-campus"></select>
-        </div>
+            <select id="sel-campus"></select> </div>
 
         <button class="action-btn" onclick="ejecutar()">VISUALIZAR</button>
     </div>
@@ -92,12 +107,16 @@
     <div id="status" style="margin-top: auto; font-size: 0.8rem; color: #bdc3c7;">Esperando...</div>
 </div>
 
-<div id="network">
+<div id="main-container">
+    <div id="network"></div>
+    <div id="info-overlay"></div> 
+    
     <div class="legend">
         <div><span class="dot" style="background:#3498db;"></span>Estación</div>
         <div><span class="dot" style="background:#e74c3c;"></span>Campus</div>
         <div><span class="dot" style="background:#f1c40f;"></span>Estudio</div>
-        <div><span class="dot" style="background:#2ecc71;"></span>Línea</div>
+        <div><span class="dot" style="border: 2px solid #e74c3c; background:white;"></span>Conexión</div>
+        <div style="margin-top:5px; font-style:italic;">* Pasa el ratón para ver detalles</div>
     </div>
 </div>
 
@@ -105,44 +124,55 @@
     let currentOption = 0;
     let network = null;
 
-    // --- CARGA DE DATOS INICIALES ---
     document.addEventListener('DOMContentLoaded', () => {
         fetch('/api/init')
             .then(r => r.json())
             .then(data => {
+                // Rellenamos selects normales
                 llenarSelect('sel-linea', data.lineas);
-                llenarSelect('sel-origen', data.estaciones);
                 llenarSelect('sel-campus', data.campus);
-                llenarSelect('sel-estudio', data.estudios);
+                
+                // Rellenamos las listas de búsqueda (Datalists)
+                llenarDatalist('list-estaciones', data.estaciones);
+                llenarDatalist('list-estudios', data.estudios);
             });
     });
 
     function llenarSelect(id, lista) {
         const s = document.getElementById(id);
+        s.innerHTML = ""; // Limpiar previos
         lista.forEach(item => s.add(new Option(item, item)));
     }
 
-    // --- LÓGICA DE MENÚ ---
+    // Nueva función para rellenar las listas de búsqueda
+    function llenarDatalist(id, lista) {
+        const d = document.getElementById(id);
+        d.innerHTML = "";
+        lista.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            d.appendChild(opt);
+        });
+    }
+
     function sel(opcion) {
         currentOption = opcion;
-        
-        // UI Update
         document.querySelectorAll('.menu-opt').forEach(b => b.classList.remove('active'));
         event.target.classList.add('active');
         document.getElementById('dynamic-form').style.display = 'block';
         document.querySelectorAll('.field').forEach(f => f.style.display = 'none');
+        document.getElementById('info-overlay').style.display = 'none';
 
         const title = document.getElementById('form-title');
         
-        // Mostrar campos según la opción del script python
+        // Lógica de visualización de campos
         if(opcion === 1) {
             title.innerText = "Ver Línea";
             document.getElementById('input-linea').style.display = 'block';
         } else if(opcion === 2 || opcion === 3 || opcion === 5) {
             title.innerText = "Consulta Directa";
-            // No requieren inputs extra
         } else if(opcion === 4) {
-            title.innerText = "Buscar Campus";
+            title.innerText = "Buscar Campus por Grado";
             document.getElementById('input-estudio').style.display = 'block';
         } else if(opcion === 6) {
             title.innerText = "Ruta a Campus";
@@ -155,20 +185,39 @@
         }
     }
 
-    // --- EJECUCIÓN ---
     function ejecutar() {
+        // Recogemos valores dependiendo de si es Select o Input
+        const lineaVal = document.getElementById('sel-linea').value;
+        const campusVal = document.getElementById('sel-campus').value;
+        const origenVal = document.getElementById('inp-origen').value;
+        const estudioVal = document.getElementById('inp-estudio').value;
+
+        // Validaciones básicas
+        if ((currentOption === 6 || currentOption === 7) && !origenVal) {
+            alert("Por favor, introduce una estación de origen.");
+            return;
+        }
+        if ((currentOption === 4 || currentOption === 7) && !estudioVal) {
+            alert("Por favor, selecciona un estudio.");
+            return;
+        }
+
         const payload = {
             opcion: String(currentOption),
             data: {
-                linea: document.getElementById('sel-linea').value,
-                estudio: document.getElementById('sel-estudio').value,
-                origen: document.getElementById('sel-origen').value,
-                campus: document.getElementById('sel-campus').value
+                linea: lineaVal,
+                estudio: estudioVal,
+                origen: origenVal,
+                campus: campusVal
             }
         };
 
         const status = document.getElementById('status');
+        const overlay = document.getElementById('info-overlay');
+        const netContainer = document.getElementById('network');
+        
         status.innerText = "Consultando Neo4j...";
+        overlay.style.display = 'none';
 
         fetch('/api/accion', {
             method: 'POST',
@@ -177,18 +226,58 @@
         })
         .then(r => r.json())
         .then(data => {
-            if(data.nodes.length === 0) {
-                status.innerText = "No se encontraron resultados.";
-                alert("La consulta no devolvió datos.");
+            
+            if (data.type === 'table') {
+                netContainer.style.visibility = 'hidden';
+                mostrarTabla(data.data);
+                status.innerText = "Tabla cargada.";
                 return;
             }
+
+            if (!data.nodes || data.nodes.length === 0) {
+                let msg = "No se encontraron resultados.";
+                if(currentOption === 2) msg = "🚫 No hay hubs universitarios.";
+                if(currentOption === 6 || currentOption === 7) msg = "❌ No se ha encontrado ruta posible (o revisa los nombres).";
+                
+                mostrarMensaje(msg);
+                status.innerText = "Sin resultados.";
+                netContainer.style.visibility = 'hidden';
+                return;
+            }
+
+            netContainer.style.visibility = 'visible';
             dibujar(data);
             status.innerText = `Mostrando ${data.nodes.length} nodos.`;
         })
         .catch(e => { console.error(e); status.innerText = "Error de conexión"; });
     }
 
-    // --- DIBUJADO VIS.JS ---
+    function mostrarTabla(datos) {
+        const overlay = document.getElementById('info-overlay');
+        let html = `<h3>Resumen Académico</h3>
+                    <table>
+                        <thead><tr><th>Universidad</th><th>Grados</th><th>Másters</th></tr></thead>
+                        <tbody>`;
+        
+        datos.forEach(row => {
+            html += `<tr>
+                        <td>${row.universidad}</td>
+                        <td>${row.grados}</td>
+                        <td>${row.masters}</td>
+                     </tr>`;
+        });
+        html += `</tbody></table>`;
+        
+        overlay.innerHTML = html;
+        overlay.style.display = 'block';
+    }
+
+    function mostrarMensaje(msg) {
+        const overlay = document.getElementById('info-overlay');
+        overlay.innerHTML = `<div class="error-msg">${msg}</div>`;
+        overlay.style.display = 'block';
+    }
+
     function dibujar(data) {
         const container = document.getElementById('network');
         
@@ -199,23 +288,33 @@
 
         const options = {
             nodes: {
-                shape: 'dot', size: 20, font: {size: 14, color: '#333'}, borderWidth: 2
+                shape: 'dot', size: 20, 
+                font: {size: 14, color: '#333', strokeWidth: 2, strokeColor: '#fff'}, 
+                borderWidth: 2,
+                shadow: true
             },
             edges: {
-                width: 2, smooth: { type: 'continuous' }, color: {color:'#bdc3c7', highlight:'#2c3e50'}
+                width: 2, 
+                smooth: { type: 'continuous' }, 
+                color: {color:'#bdc3c7', highlight:'#2c3e50'},
+                arrows: { to: { scaleFactor: 0.5 } } // Flechas más discretas
             },
             groups: {
                 Estacion: { color: {background:'#3498db', border:'#2980b9'} },
                 Campus:   { shape:'box', color:{background:'#e74c3c', border:'#c0392b'}, font:{color:'white'} },
                 Estudio:  { shape:'star', color:{background:'#f1c40f', border:'#f39c12'}, size: 30 },
-                Linea:    { shape:'diamond', color:{background:'#2ecc71', border:'#27ae60'}, size: 25 },
+                Linea:    { shape:'diamond', color:{background:'#2ecc71', border:'#27ae60'}, size: 20 },
                 Default:  { color: '#95a5a6' }
             },
             physics: {
                 stabilization: false,
-                barnesHut: { gravitationalConstant: -4000, springConstant: 0.04 }
+                barnesHut: { 
+                    gravitationalConstant: -3000, 
+                    springConstant: 0.04,
+                    springLength: 150 
+                }
             },
-            interaction: { hover: true }
+            interaction: { hover: true, tooltipDelay: 200 }
         };
 
         if(network) network.destroy();

@@ -4,10 +4,9 @@ import os
 
 app = Flask(__name__)
 
-URI = os.environ.get("NEO_URL","neo4j://localhost:7687")
+URI = os.environ.get("NEO_URL", "neo4j://localhost:7687")
 AUTH = ("neo4j", "password_seguro")
 driver = GraphDatabase.driver(URI, auth=AUTH)
-
 
 def construir_grafo(result):
     nodes = {}
@@ -23,62 +22,101 @@ def construir_grafo(result):
                     labels = list(item.labels)
                     props = dict(item)
                     
+                    # Etiqueta visible por defecto
                     label_show = props.get('nombre') or props.get('Universidad') or "Nodo"
                     group = labels[0] if labels else "Default"
                     
-                    title_tooltip = str(props)
+                    # Tooltip básico (propiedades del nodo)
+                    tooltip_lines = []
+                    for k, v in props.items():
+                        if k not in ['nombre', 'X', 'Y', 'Renfe']: 
+                            tooltip_lines.append(f"{k}: {v}")
                     
-                    if group == 'Estacion' and props.get('Renfe'):
-                        label_show += "\n🚆" 
-                    
+                    # Icono Renfe si existe
+                    if group == 'Estacion' and props.get('Renfe') and props.get('Renfe') != "[]":
+                        label_show += "\n"
+                        tooltip_lines.append(f"Renfe: {props.get('Renfe')}")
+
                     nodes[node_id] = {
                         "id": node_id,
                         "label": label_show,
                         "group": group,
-                        "title": title_tooltip
+                        "title": "\n".join(tooltip_lines) if tooltip_lines else label_show
                     }
 
-            # 2. SI ES UN CAMINO (Path) 
+            # 2. SI ES UN CAMINO (resultado de rutas SHORTEST)
             elif hasattr(item, 'nodes') and hasattr(item, 'relationships'):
-                # Recursivamente extraer los nodos
                 sub_nodes, sub_edges = construir_grafo([{"n": n} for n in item.nodes])
                 nodes.update({n['id']: n for n in sub_nodes})
                 
-                # Procesar las relaciones del camino manualmente
                 for rel in item.relationships:
                     start = rel.start_node.element_id if hasattr(rel.start_node, 'element_id') else rel.start_node.id
                     end = rel.end_node.element_id if hasattr(rel.end_node, 'element_id') else rel.end_node.id
                     props = dict(rel)
+                    lbl = rel.type
                     
-                    # Intentar sacar nombre de la línea, si no, el tipo
-                    lbl = props.get('linea', rel.type)
-                    
-                    edges.append({
+                    edge_config = {
                         "from": start, 
                         "to": end, 
-                        "label": lbl, 
-                        "arrows": "to", 
                         "color": "red", 
                         "width": 3
-                    })
+                    }
 
-            # 3. SI ES RELACIÓN (Sueltas)
+                    if lbl == 'CONEXION':
+                        edge_config["label"] = props.get('linea', '')
+                        edge_config["arrows"] = {"to": {"enabled": False}} # Sin flecha (bidireccional)
+                    else:
+                        edge_config["label"] = lbl
+                        edge_config["arrows"] = "to"
+
+                    edges.append(edge_config)
+
+            # 3. SI ES RELACIÓN SUELTA (Consultas directas)
             elif hasattr(item, 'start_node'):
                 start = item.start_node.element_id if hasattr(item.start_node, 'element_id') else item.start_node.id
                 end = item.end_node.element_id if hasattr(item.end_node, 'element_id') else item.end_node.id
                 
-                lbl = item.type
+                type_rel = item.type
                 props = dict(item)
                 
-                if lbl == 'TIENE_ESTACION': lbl = f"Orden {props.get('orden','')}"
-                if lbl == 'CERCANA': lbl = f"{props.get('minutos','')} min"
-                if lbl == 'SIGUIENTE': lbl = props.get('linea', 'Metro')
-                if lbl == 'OFRECE': lbl = "Imparte"
-
-                edges.append({
-                    "from": start, "to": end, "label": lbl, "arrows": "to",
+                # Configuración base
+                edge_conf = {
+                    "from": start, 
+                    "to": end, 
+                    "arrows": "to",
                     "font": {"align": "top", "size": 10}
-                })
+                }
+
+                # PERSONALIZACIÓN POR TIPO
+
+                if type_rel == 'TIENE_ESTACION':
+                    edge_conf["label"] = f"Orden {props.get('orden','')}"
+                
+                elif type_rel == 'CERCANA':
+                    lbl = f"{props.get('minutos','?')} min"
+                    if props.get('rol'):
+                        lbl += f"\n({props.get('rol')})"
+                    edge_conf["label"] = lbl
+
+                elif type_rel == 'CONEXION':
+                    edge_conf["label"] = props.get('linea', 'Conexión')
+                    edge_conf["arrows"] = {"to": {"enabled": False}} 
+                    edge_conf["color"] = "red"
+                    edge_conf["width"] = 3
+
+                elif type_rel == 'OFRECE':
+                    edge_conf["label"] = "Imparte"
+                    edge_conf["color"] = "#f39c12"
+                    
+                    info_tooltip = []
+                    if props.get('coordinador'): info_tooltip.append(f"{props.get('coordinador')}")
+                    if props.get('creditos'): info_tooltip.append(f"{props.get('creditos')} ECTS")
+                    if props.get('rama'): info_tooltip.append(f"{props.get('rama')}")
+                    
+                    if info_tooltip:
+                        edge_conf["title"] = "\n".join(info_tooltip)
+
+                edges.append(edge_conf)
 
     return list(nodes.values()), edges
 
@@ -86,14 +124,15 @@ def construir_grafo(result):
 def index():
     return render_template('index.html')
 
-# --- CARGA DE SELECTORES (Estaciones, Campus, Estudios, Lineas) ---
 @app.route('/api/init')
 def init_data():
     with driver.session() as session:
+        # Consultas básicas de carga
         estaciones = [r['n'] for r in session.run("MATCH (e:Estacion) RETURN e.nombre as n ORDER BY n")]
         campus = [r['n'] for r in session.run("MATCH (c:Campus) RETURN c.nombre as n ORDER BY n")]
         estudios = [r['n'] for r in session.run("MATCH (e:Estudio) RETURN e.nombre as n ORDER BY n")]
-        # Extraemos líneas únicas
+        
+        # Obtener líneas limpias (quitando comillas si existen)
         lineas_raw = session.run("MATCH (l:Linea) RETURN l.nombre as n ORDER BY n")
         lineas = sorted(list(set([l['n'].replace("'", "").replace("L", "") for l in lineas_raw])))
         
@@ -101,7 +140,6 @@ def init_data():
         "estaciones": estaciones, "campus": campus, "estudios": estudios, "lineas": lineas
     })
 
-# --- GESTOR CENTRAL DE CONSULTAS (Switch Case visual) ---
 @app.route('/api/accion', methods=['POST'])
 def accion():
     opcion = request.json.get('opcion')
@@ -110,18 +148,43 @@ def accion():
     query = ""
     params = {}
 
-    # 1. CONSULTAR LÍNEA
+    # 5: Tabla Resumen
+    if opcion == '5':
+        query = """
+        MATCH (c:Campus)-[:OFRECE]->(e:Estudio)
+        RETURN c.Universidad as universidad, e.nombre as estudio
+        """
+        stats = {}
+        with driver.session() as session:
+            result = session.run(query)
+            for record in result:
+                uni = record['universidad']
+                estudio = record['estudio']
+                
+                if uni not in stats:
+                    stats[uni] = {"grados": 0, "masters": 0}
+                
+                if "GRADO EN" in estudio.upper():
+                    stats[uni]["grados"] += 1
+                else:
+                    stats[uni]["masters"] += 1
+        
+        table_data = [{"universidad": k, "grados": v["grados"], "masters": v["masters"]} for k, v in stats.items()]
+        return jsonify({"type": "table", "data": table_data})
+
+    # CONSULTAS DE GRAFOS
+    
+    # 1. Consultar estaciones de una línea
     if opcion == '1':
         linea_fmt = f"'R'" if data['linea'] == 'R' else f"'L{data['linea']}'"
-        # Traer la línea, sus estaciones y las conexiones internas para ver el dibujo
         query = f"""
         MATCH (l:Linea {{nombre: {linea_fmt}}})
         MATCH (l)-[r:TIENE_ESTACION]->(e:Estacion)
-        OPTIONAL MATCH (e)-[s:SIGUIENTE {{linea: {linea_fmt}}}]->(e2:Estacion)
+        OPTIONAL MATCH (e)-[s:CONEXION {{linea: {linea_fmt}}}]-(e2:Estacion)
         RETURN l, r, e, s, e2
         """
 
-    # 2. HUBS UNIVERSITARIOS
+    # 2. Consultar HUBS (Estaciones con > 1 campus cerca)
     elif opcion == '2':
         query = """
         MATCH (c:Campus)-[r:CERCANA]->(e:Estacion)
@@ -132,15 +195,15 @@ def accion():
         RETURN e, c, rel
         """
 
-    # 3. RENFE Y CAMPUS
+    # 3. Consultar estaciones con Renfe y Campus
     elif opcion == '3':
         query = """
         MATCH (c:Campus)-[r:CERCANA]->(e:Estacion)
-        WHERE e.Renfe IS NOT NULL AND e.Renfe <> 'NULL'
+        WHERE e.Renfe IS NOT NULL AND e.Renfe <> 'NULL' AND e.Renfe <> '[]'
         RETURN c, r, e
         """
 
-    # 4. CAMPUS POR ESTUDIO
+    # 4. Consultar Campus por Estudio
     elif opcion == '4':
         params = {'estudio': data['estudio']}
         query = """
@@ -149,40 +212,24 @@ def accion():
         RETURN est, r, c
         """
 
-    # 5. RESUMEN UNIS (Visualización Jerárquica)
-    elif opcion == '5':
-        query = """
-        MATCH (c:Campus)
-        // Creamos nodo ficticio visual para la uni si queremos agrupar, 
-        // pero aquí basta con mostrar los campus agrupados por propiedad 'Universidad'
-        RETURN c
-        """
-
-    # 6. RUTA ESTACIÓN -> CAMPUS
+    # 6. Ruta Estación -> Campus
     elif opcion == '6':
         params = {'origen': data['origen'], 'destino': data['campus']}
         query = """
         MATCH (start:Estacion {nombre: $origen})
-        MATCH (c:Campus {nombre: $destino})-[:CERCANA]-(end:Estacion)
-        MATCH p = SHORTEST 1 (start)-[:SIGUIENTE*]->(end)
-        RETURN start, c, p
+        MATCH (c:Campus {nombre: $destino})-[r_cercana:CERCANA]-(end:Estacion)
+        MATCH p = SHORTEST 1 (start)-[:CONEXION*]-(end)
+        RETURN start, c, p, r_cercana, end
         """
 
-    # 7. RUTA ESTACIÓN -> GRADO
+    # 7. Ruta Estación -> Grado
     elif opcion == '7':
         params = {'origen': data['origen'], 'estudio': data['estudio']}
         query = """
         MATCH (start:Estacion {nombre: $origen})
-        
-        // 1. Capturar la relación entre Campus y Estudio (r_ofrece)
         MATCH (est:Estudio {nombre: $estudio})<-[r_ofrece:OFRECE]-(c:Campus)
-        
-        // 2. Capturar la relación entre Campus y su estación cercana (r_cercana)
         MATCH (c)-[r_cercana:CERCANA]-(end:Estacion)
-        
-        // 3. Calcular el camino
-        MATCH p = SHORTEST 1 (start)-[:SIGUIENTE*]->(end)
-        
+        MATCH p = SHORTEST 1 (start)-[:CONEXION*]-(end)
         RETURN start, est, c, p, r_ofrece, r_cercana
         """
 
@@ -190,7 +237,7 @@ def accion():
         result = session.run(query, params)
         nodes, edges = construir_grafo(result)
 
-    return jsonify({"nodes": nodes, "edges": edges})
+    return jsonify({"type": "graph", "nodes": nodes, "edges": edges})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
