@@ -4,10 +4,15 @@ import os
 
 
 def main():
+    try:
+        global driver                                                                               # Acceso a la base de datos.
+        driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password_seguro"))
+        driver.verify_connectivity()
 
-    global driver                                                                               # Acceso a la base de datos.
-    driver = GraphDatabase.driver("neo4j://localhost:7687", auth=("neo4j", "password_seguro"))
-    driver.verify_connectivity()
+    except Exception as e:
+        print(f"Error conectando a Neo4j: {e}")
+        return
+
 
     while True:                                                                                 # Interacción con la aplicación.
 
@@ -15,34 +20,34 @@ def main():
         opcion = input("Introduzca una opcion: ")
 
         if opcion == "1":                                                                       # 1. Consultar estaciones de una línea.
-            os.system("cls")
+            clear_screen()
             
             linea = input("Introduzca el número de línea: ")
             ConsultaLinea(linea)
 
         elif opcion == "2":                                                                     # 2. Consultar hubs universitarios.
-            os.system("cls")
+            clear_screen()
             ConsultaHubs()
 
         elif opcion == "3":                                                                     # 3. Consultar estaciones universitarias con cercanías.
-            os.system("cls")
+            clear_screen()
             ConsultaRenfe()
 
         elif opcion == "4":                                                                     # 4. Consultar campus por estudio.
-            os.system("cls")
+            clear_screen()
             rama = EligeRama()
 
-            os.system("cls")
+            clear_screen()
             campus = ConsultaCampus(EligeEstudios(rama))
 
             for c in campus: print(f"{c[0]}, {c[1]}")       # Impresión Campus, Universidad por pantalla
 
         elif opcion == "5":                                                                     # 5. Resumen de universidades.
-            os.system("cls")
+            clear_screen()
             ResumenUnis()
 
         elif opcion == "6":                                                                     # 6. Consultar rutas estación-campus.
-            os.system("cls")
+            clear_screen()
             estacion, campus = IntroducirDatos()
 
             print('')
@@ -50,7 +55,7 @@ def main():
                 print("No hay estaciones de metro cerca del campus seleccionado.")
 
         elif opcion == "7":                                                                     # 7. Consultar rutas estación-grado.
-            os.system("cls")
+            clear_screen()
 
             rama = EligeRama()
             estudio = EligeEstudios(rama)
@@ -64,16 +69,16 @@ def main():
                     print(f"No existe ruta de metro hasta el {c[0]}.\n")
 
         elif opcion == "8":                                                                     # 8. Salir.
-            os.system("cls")
+            clear_screen()
             break
 
         else:                                                                                   # Errores del usuario.
-            os.system("cls")
+            clear_screen()
             continue
 
 
         input("Pulse enter para continuar:")
-        os.system("cls")
+        clear_screen()
 
 
 def MuestraMenu():                                                                              # Interfaz del menú principal.  
@@ -214,7 +219,7 @@ def EligeEstudios(rama):
     while not opcion.isnumeric() or int(opcion) not in list(range(1, idx)):                     # Se pide índice hasta uno satisfactorio.
         opcion = input("Elija un grado: ")
 
-    os.system("cls")
+    clear_screen()
     return estudios[int(opcion) - 1]                                                            # Devuelve estudio.
 
 
@@ -333,7 +338,7 @@ def IntroducirDatos(estacion = True, campus = True):
             if records[0].data()['estacion'] != None:                                           # Si no existe, se pide de nuevo.
                 valido = True
             
-            os.system("cls")
+            clear_screen()
 
     if campus:
         universidad = EligeUni()
@@ -440,13 +445,9 @@ def QuitaTildes(palabra):                                                       
     return palabra
 
 
+def clear_screen():                                                                                                 # Herramienta auxiliar para limpiar la pantalla.
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 
-
-
-
-
-
-
-main()
-
+if __name__ == "__main__":
+    main()
