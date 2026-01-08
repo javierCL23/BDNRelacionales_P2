@@ -1,10 +1,9 @@
 import pandas as pd
 from neo4j import GraphDatabase
 import time
-import os
 
 # Configuración de conexión
-URI = os.environ.get("NEO_URL","neo4j://localhost:7687")
+URI = "neo4j://localhost:7687"
 AUTH = ("neo4j", "password_seguro")
 
 def get_driver():
@@ -62,8 +61,8 @@ def cargar_lineas(driver, df):
                 MERGE (l)-[:TIENE_ESTACION {{orden: {orden}}}]->(e)
                 """)
 
-        # 3. Crear relaciones SIGUIENTE
-        print("Creando relaciones de trayecto (SIGUIENTE)...")
+        # 3. Crear relaciones CONEXION
+        print("Creando relaciones de trayecto (CONEXION)...")
         session.run("""
             MATCH (l:Linea)-[r:TIENE_ESTACION]->(e:Estacion)
             WITH l, e ORDER BY r.orden
@@ -71,14 +70,14 @@ def cargar_lineas(driver, df):
             FOREACH (i in range(0, size(estaciones)-2) |
                 FOREACH (e1 in [estaciones[i]] |
                     FOREACH (e2 in [estaciones[i+1]] |
-                        MERGE (e1)-[:SIGUIENTE {linea:l.nombre}]->(e2)
-                        MERGE (e2)-[:SIGUIENTE {linea:l.nombre}]->(e1)
+                        MERGE (e1)-[:CONEXION {linea:l.nombre}]-(e2)
+                        
             )))
         """)
 
         # 4. Conexiones manuales
-        session.run("MATCH (a:Estacion {nombre:'CARPETANA'}), (b:Estacion {nombre:'LAGUNA'}) MERGE (a)-[:SIGUIENTE {linea:'L6'}]->(b) MERGE (b)-[:SIGUIENTE {linea:'L6'}]->(a)")
-        session.run("MATCH (a:Estacion {nombre:'SAN NICASIO'}), (b:Estacion {nombre:'PUERTA DEL SUR'}) MERGE (a)-[:SIGUIENTE {linea:'L12'}]->(b) MERGE (b)-[:SIGUIENTE {linea:'L12'}]->(a)")
+        session.run("MATCH (a:Estacion {nombre:'CARPETANA'}), (b:Estacion {nombre:'LAGUNA'}) MERGE (a)-[:CONEXION {linea:'L6'}]-(b)")
+        session.run("MATCH (a:Estacion {nombre:'SAN NICASIO'}), (b:Estacion {nombre:'PUERTA DEL SUR'}) MERGE (a)-[:CONEXION {linea:'L12'}]-(b)")
 
 def cargar_campus(driver, df):
     print("Cargando Campus...")
@@ -115,12 +114,11 @@ def cargar_estudios(driver, df):
             session.run("""
                 MATCH (e:Estudio {nombre: $est})
                 MATCH (c:Campus {nombre: $camp})
-                SET e.creditos = $cred, e.coordinador = $coord
+                SET e.creditos = $cred, e.coordinador = $coord, e.rama = $rama
                 MERGE (c)-[:OFRECE]->(e)
-            """, est=row['Estudios'], camp=row['Campus'], cred=row['Créditos'], coord=row['Coordinador'])
+            """, est=row['Estudios'], camp=row['Campus'], cred=row['Créditos'], coord=row['Coordinador'], rama=row['Rama'])
 
 def main():
-    time.sleep(10)
     driver = get_driver()
     if not driver:
         return
